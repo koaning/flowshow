@@ -91,6 +91,9 @@
             display: flex;
             align-items: center;
         }
+        .task-row.hidden {
+            display: none;
+        }
         .task-label {
             position: absolute;
             left: -150px;
@@ -103,6 +106,31 @@
             text-overflow: ellipsis;
             color: #495057;
             font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+        }
+        .task-label:hover {
+            color: #228be6;
+        }
+        .task-label.has-children::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 4px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23495057' d='M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            transition: transform 0.2s;
+            transform: rotate(90deg);
+        }
+        .task-label.has-children.collapsed::before {
+            transform: rotate(0deg);
+        }
+        .task-label:not(.has-children) {
+            padding-left: 16px;
         }
     </style>
 </head>
@@ -129,40 +157,56 @@
             "subtasks": [{"task_name":"doit","start_time":"2025-01-15T09:39:52.737034+00:00","duration":1.9134825421497226,"inputs":{},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:54.650478+00:00","output":null,"subtasks":[{"task_name":"load_data","start_time":"2025-01-15T09:39:52.737049+00:00","duration":0.505058916285634,"inputs":{"arg0":1},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:53.242107+00:00"},{"task_name":"load_data","start_time":"2025-01-15T09:39:53.242154+00:00","duration":0.5046013751998544,"inputs":{"arg0":2},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:53.746780+00:00"},{"task_name":"merge","start_time":"2025-01-15T09:39:53.746903+00:00","duration":0.9034969159401953,"inputs":{"arg0":[1,1,1,1,1,1,1,1,1,1],"arg1":[2,2,2,2,2,2,2,2,2,2]},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:54.650427+00:00","logs":"merging\n"}]},{"task_name":"doit","start_time":"2025-01-15T09:39:54.650488+00:00","duration":1.9133520000614226,"inputs":{},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:56.563835+00:00","output":null,"subtasks":[{"task_name":"load_data","start_time":"2025-01-15T09:39:54.650538+00:00","duration":0.5038458751514554,"inputs":{"arg0":1},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:55.154442+00:00"},{"task_name":"load_data","start_time":"2025-01-15T09:39:55.154501+00:00","duration":0.5040814997628331,"inputs":{"arg0":2},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:55.658637+00:00"},{"task_name":"merge","start_time":"2025-01-15T09:39:55.658701+00:00","duration":0.905007999856025,"inputs":{"arg0":[1,1,1,1,1,1,1,1,1,1],"arg1":[2,2,2,2,2,2,2,2,2,2]},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:56.563733+00:00","logs":"merging\n"}]}]
         };
 
-        function flattenTasks(task, depth = 0, tasks = []) {
-            tasks.push({ ...task, depth });
+        function flattenTasks(task, depth = 0, tasks = [], parentCollapsed = false) {
+            // Debug: log the raw task name to see the exact characters
+            console.log('Raw task name:', task.task_name, Array.from(task.task_name).map(c => c.charCodeAt(0)));
+            
+            // Clean up task name by removing anything before the actual name
+            const cleanTaskName = task.task_name.split(/[\u0080-\uffff]/).pop().trim();
+            console.log('Cleaned task name:', cleanTaskName);
+            
+            const cleanedTask = {
+                ...task,
+                task_name: cleanTaskName,
+                depth: depth,
+                hasChildren: !!(task.subtasks && task.subtasks.length),
+                collapsed: false,
+                hidden: parentCollapsed
+            };
+            
+            tasks.push(cleanedTask);
+            
             if (task.subtasks) {
                 task.subtasks.forEach(subtask => {
-                    flattenTasks(subtask, depth + 1, tasks);
+                    flattenTasks(subtask, depth + 1, tasks, parentCollapsed || cleanedTask.collapsed);
                 });
             }
             return tasks;
         }
 
-        function createAxis(startTime, endTime, width, margin) {
-            const axis = document.getElementById('axis');
-            const duration = endTime - startTime;
-            const numTicks = 5;
+        function toggleChildren(taskIndex, tasks) {
+            const task = tasks[taskIndex];
+            task.collapsed = !task.collapsed;
             
-            for (let i = 0; i <= numTicks; i++) {
-                const tick = document.createElement('div');
-                tick.className = 'tick';
-                const time = new Date(startTime + (duration * i / numTicks));
-                tick.style.left = `${(i / numTicks) * width + margin}px`;
-                tick.textContent = time.toLocaleTimeString('en-US', {
-                    hour12: false,
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-                axis.appendChild(tick);
+            // Update visibility of children
+            let depth = task.depth;
+            for (let i = taskIndex + 1; i < tasks.length; i++) {
+                if (tasks[i].depth <= depth) break;
+                
+                if (tasks[i].depth === depth + 1) {
+                    tasks[i].hidden = task.collapsed;
+                } else {
+                    tasks[i].hidden = task.collapsed || tasks[i].hidden;
+                }
             }
+            
+            // Redraw the timeline
+            document.getElementById('timeline').innerHTML = '';
+            renderTimeline(tasks);
         }
 
-        function createTimeline() {
+        function renderTimeline(tasks) {
             const timeline = document.getElementById('timeline');
-            timeline.style.marginBottom = '10px';
-            const tasks = flattenTasks(data);
             const startTime = new Date(data.start_time).getTime();
             const endTime = new Date(data.end_time).getTime();
             const duration = endTime - startTime;
@@ -170,13 +214,24 @@
             const margin = 10;
 
             tasks.forEach((task, index) => {
+                if (task.hidden) return;
+                
                 const row = document.createElement('div');
                 row.className = 'task-row';
                 
                 const label = document.createElement('div');
                 label.className = 'task-label';
-                label.textContent = task.task_name;
-                label.style.paddingLeft = `${task.depth * 20}px`;
+                if (task.hasChildren) {
+                    label.classList.add('has-children');
+                    if (task.collapsed) {
+                        label.classList.add('collapsed');
+                    }
+                }
+                label.textContent = task.task_name.replace(/[^\x20-\x7E]/g, '').trim();
+                
+                if (task.hasChildren) {
+                    label.addEventListener('click', () => toggleChildren(index, tasks));
+                }
                 
                 const bar = document.createElement('div');
                 bar.className = 'bar';
@@ -215,8 +270,32 @@
                 row.appendChild(bar);
                 timeline.appendChild(row);
             });
+        }
+
+        function createAxis(startTime, endTime, width, margin) {
+            const axis = document.getElementById('axis');
+            const duration = endTime - startTime;
+            const numTicks = 5;
             
-            createAxis(startTime, endTime, width, margin);
+            for (let i = 0; i <= numTicks; i++) {
+                const tick = document.createElement('div');
+                tick.className = 'tick';
+                const time = new Date(startTime + (duration * i / numTicks));
+                tick.style.left = `${(i / numTicks) * width + margin}px`;
+                tick.textContent = time.toLocaleTimeString('en-US', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                axis.appendChild(tick);
+            }
+        }
+
+        function createTimeline() {
+            const tasks = flattenTasks(data);
+            renderTimeline(tasks);
+            createAxis(new Date(data.start_time).getTime(), new Date(data.end_time).getTime(), 800, 10);
         }
 
         function showTaskInfo(task) {
@@ -233,7 +312,7 @@
             });
 
             taskInfo.innerHTML = `
-                <h3>${task.task_name}</h3>
+                <h3>${task.task_name.replace(/[^\x20-\x7E]/g, '').trim()}</h3>
                 <p><strong>Duration:</strong> ${formatDuration(task.duration)}</p>
                 <p><strong>Start:</strong> ${formatTime(task.start_time)}</p>
                 <p><strong>End:</strong> ${formatTime(task.end_time)}</p>
