@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .timeline-container {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .timeline-content {
+            margin-left: 150px;
+            position: relative;
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        .axis {
+            position: relative;
+            height: 30px;
+            border-top: 1px solid #dee2e6;
+            margin: 10px 20px 20px 0;
+        }
+        .tick {
+            position: absolute;
+            top: 0;
+            transform: translateX(-50%);
+            padding-top: 5px;
+            border-left: 1px solid #dee2e6;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .bar {
+            height: 20px;
+            background-color: #4a9eff;
+            position: absolute;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.9;
+        }
+        .bar:hover {
+            background-color: #2980b9;
+            opacity: 1;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .bar.selected {
+            outline: 2px solid #2c3e50;
+            opacity: 1;
+        }
+        .task-info {
+            margin-top: 20px;
+            padding: 16px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .task-info h3 {
+            margin: 0 0 12px 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .task-info p {
+            margin: 8px 0;
+            color: #495057;
+            font-size: 14px;
+        }
+        .task-info .logs {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-size: 13px;
+            color: #495057;
+            border: 1px solid #e9ecef;
+            margin-top: 12px;
+        }
+        .task-row {
+            height: 30px;
+            position: relative;
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+        .task-label {
+            position: absolute;
+            left: -150px;
+            width: 140px;
+            padding-right: 10px;
+            text-align: left;
+            line-height: 20px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #495057;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="timeline-container">
+        <div class="timeline-content">
+            <div id="timeline"></div>
+            <div class="axis" id="axis"></div>
+        </div>
+        <div id="taskInfo" class="task-info" style="display: none;"></div>
+    </div>
+
+    <script>
+        const data = {
+            "task_name": "main",
+            "start_time": "2025-01-15T09:39:52.736853+00:00",
+            "duration": 3.8269477924332023,
+            "inputs": {},
+            "error": null,
+            "retry_count": 0,
+            "end_time": "2025-01-15T09:39:56.563859+00:00",
+            "logs": "yo\n10\nyeeheaw\n10\n",
+            "output": null,
+            "subtasks": [{"task_name":"doit","start_time":"2025-01-15T09:39:52.737034+00:00","duration":1.9134825421497226,"inputs":{},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:54.650478+00:00","output":null,"subtasks":[{"task_name":"load_data","start_time":"2025-01-15T09:39:52.737049+00:00","duration":0.505058916285634,"inputs":{"arg0":1},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:53.242107+00:00"},{"task_name":"load_data","start_time":"2025-01-15T09:39:53.242154+00:00","duration":0.5046013751998544,"inputs":{"arg0":2},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:53.746780+00:00"},{"task_name":"merge","start_time":"2025-01-15T09:39:53.746903+00:00","duration":0.9034969159401953,"inputs":{"arg0":[1,1,1,1,1,1,1,1,1,1],"arg1":[2,2,2,2,2,2,2,2,2,2]},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:54.650427+00:00","logs":"merging\n"}]},{"task_name":"doit","start_time":"2025-01-15T09:39:54.650488+00:00","duration":1.9133520000614226,"inputs":{},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:56.563835+00:00","output":null,"subtasks":[{"task_name":"load_data","start_time":"2025-01-15T09:39:54.650538+00:00","duration":0.5038458751514554,"inputs":{"arg0":1},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:55.154442+00:00"},{"task_name":"load_data","start_time":"2025-01-15T09:39:55.154501+00:00","duration":0.5040814997628331,"inputs":{"arg0":2},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:55.658637+00:00"},{"task_name":"merge","start_time":"2025-01-15T09:39:55.658701+00:00","duration":0.905007999856025,"inputs":{"arg0":[1,1,1,1,1,1,1,1,1,1],"arg1":[2,2,2,2,2,2,2,2,2,2]},"error":null,"retry_count":0,"end_time":"2025-01-15T09:39:56.563733+00:00","logs":"merging\n"}]}]
+        };
+
+        function flattenTasks(task, depth = 0, tasks = []) {
+            tasks.push({ ...task, depth });
+            if (task.subtasks) {
+                task.subtasks.forEach(subtask => {
+                    flattenTasks(subtask, depth + 1, tasks);
+                });
+            }
+            return tasks;
+        }
+
+        function createAxis(startTime, endTime, width, margin) {
+            const axis = document.getElementById('axis');
+            const duration = endTime - startTime;
+            const numTicks = 5;
+            
+            for (let i = 0; i <= numTicks; i++) {
+                const tick = document.createElement('div');
+                tick.className = 'tick';
+                const time = new Date(startTime + (duration * i / numTicks));
+                tick.style.left = `${(i / numTicks) * width + margin}px`;
+                tick.textContent = time.toLocaleTimeString('en-US', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                axis.appendChild(tick);
+            }
+        }
+
+        function createTimeline() {
+            const timeline = document.getElementById('timeline');
+            timeline.style.marginBottom = '10px';
+            const tasks = flattenTasks(data);
+            const startTime = new Date(data.start_time).getTime();
+            const endTime = new Date(data.end_time).getTime();
+            const duration = endTime - startTime;
+            const width = 800;
+            const margin = 10;
+
+            tasks.forEach((task, index) => {
+                const row = document.createElement('div');
+                row.className = 'task-row';
+                
+                const label = document.createElement('div');
+                label.className = 'task-label';
+                label.textContent = task.task_name;
+                label.style.paddingLeft = `${task.depth * 20}px`;
+                
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                const taskStart = new Date(task.start_time).getTime();
+                const taskDuration = task.duration * 1000;
+                const left = ((taskStart - startTime) / duration) * width + margin;
+                const barWidth = (taskDuration / duration) * width;
+                
+                bar.style.left = `${left}px`;
+                bar.style.width = `${barWidth}px`;
+                
+                bar.addEventListener('click', () => {
+                    document.querySelectorAll('.bar').forEach(b => b.classList.remove('selected'));
+                    bar.classList.add('selected');
+                });
+                
+                bar.addEventListener('mouseenter', () => {
+                    showTaskInfo(task);
+                });
+                
+                bar.addEventListener('mouseleave', () => {
+                    if (!document.querySelector('.bar.selected')) {
+                        document.getElementById('taskInfo').style.display = 'none';
+                    } else {
+                        const selectedBar = document.querySelector('.bar.selected');
+                        const selectedTask = tasks.find((t, i) => 
+                            document.querySelectorAll('.bar')[i] === selectedBar
+                        );
+                        if (selectedTask) {
+                            showTaskInfo(selectedTask);
+                        }
+                    }
+                });
+                
+                row.appendChild(label);
+                row.appendChild(bar);
+                timeline.appendChild(row);
+            });
+            
+            createAxis(startTime, endTime, width, margin);
+        }
+
+        function showTaskInfo(task) {
+            const taskInfo = document.getElementById('taskInfo');
+            taskInfo.style.display = 'block';
+            
+            const formatDuration = (duration) => `${(duration * 1000).toFixed(2)}ms`;
+            const formatTime = (time) => new Date(time).toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            });
+
+            taskInfo.innerHTML = `
+                <h3>${task.task_name}</h3>
+                <p><strong>Duration:</strong> ${formatDuration(task.duration)}</p>
+                <p><strong>Start:</strong> ${formatTime(task.start_time)}</p>
+                <p><strong>End:</strong> ${formatTime(task.end_time)}</p>
+                ${task.inputs && Object.keys(task.inputs).length ? 
+                    `<p><strong>Inputs:</strong> ${JSON.stringify(task.inputs, null, 2)}</p>` : ''}
+                ${task.logs ? `<div class="logs">${task.logs}</div>` : ''}
+            `;
+        }
+
+        createTimeline();
+    </script>
+</body>
+</html>
