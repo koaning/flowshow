@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="./favicon.ico" />
+    <!-- Preload is necessary because we show these images when we disconnect from the server,
+    but at that point we cannot load these images from the server -->
+    <link rel="preload" href="./assets/gradient-yHQUC_QB.png" as="image" />
+    <link rel="preload" href="./assets/noise-60BoTA8O.png" as="image" />
+    <!-- Preload the fonts -->
+    <link rel="preload" href="./assets/Lora-VariableFont_wght-B2ootaw-.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/PTSans-Regular-CxL0S8W7.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/PTSans-Bold-D9fedIX3.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/FiraMono-Regular-BTCkDNvf.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/FiraMono-Medium-DU3aDxX5.ttf" as="font" crossorigin="anonymous" />
+    <link rel="preload" href="./assets/FiraMono-Bold-CLVRCuM9.ttf" as="font" crossorigin="anonymous" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="a marimo app" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.json" />
+
+    <script data-marimo="true">
+      function __resizeIframe(obj) {
+        var scrollbarHeight = 20; // Max between windows, mac, and linux
+
+        function setHeight() {
+          var element = obj.contentWindow.document.documentElement;
+          // If there is no vertical scrollbar, we don't need to resize the iframe
+          if (element.scrollHeight === element.clientHeight) {
+            return;
+          }
+
+          // Create a new height that includes the scrollbar height if it's visible
+          var hasHorizontalScrollbar = element.scrollWidth > element.clientWidth;
+          var newHeight = element.scrollHeight + (hasHorizontalScrollbar ? scrollbarHeight : 0);
+
+          // Only update the height if it's different from the current height
+          if (obj.style.height !== `${newHeight}px`) {
+            obj.style.height = `${newHeight}px`;
+          }
+        }
+
+        // Resize the iframe to the height of the content and bottom scrollbar height
+        setHeight();
+
+        // Resize the iframe when the content changes
+        const resizeObserver = new ResizeObserver((entries) => {
+          setHeight();
+        });
+        resizeObserver.observe(obj.contentWindow.document.body);
+      }
+    </script>
+    <marimo-filename hidden>notebook.py</marimo-filename>
+    <marimo-mode data-mode='edit' hidden></marimo-mode>
+    <marimo-version data-version='0.10.19' hidden></marimo-version>
+    <marimo-user-config data-config='{"completion": {"activate_on_typing": true, "copilot": false}, "display": {"dataframes": "rich", "code_editor_font_size": 14, "default_width": "medium", "cell_output": "above", "theme": "light"}, "formatting": {"line_length": 79}, "keymap": {"preset": "default", "overrides": {}}, "runtime": {"auto_instantiate": true, "auto_reload": "off", "on_cell_change": "autorun"}, "save": {"autosave": "off", "autosave_delay": 1000, "format_on_save": false}, "package_management": {"manager": "pip"}, "server": {"browser": "default", "follow_symlink": false}, "snippets": {"custom_paths": [], "include_default_snippets": true}}' data-overrides='{}' hidden></marimo-user-config>
+    <marimo-app-config data-config='{"width": "medium"}' hidden></marimo-app-config>
+    <marimo-server-token data-token='123' hidden></marimo-server-token>
+    <title>marimo</title>
+    <script type="module" crossorigin src="./assets/index-C_IDebto.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DfLILvXO.css">
+  <marimo-wasm hidden=""></marimo-wasm>
+    <script>
+        if (window.location.protocol === 'file:') {
+            alert('Warning: This file must be served by an HTTP server to function correctly.');
+        }
+    </script>
+    
+    <style>
+        #save-button {
+            display: none !important;
+        }
+        #filename-input {
+            display: none !important;
+        }
+    </style>
+    <marimo-code hidden="" data-show-code="false">import%20marimo%0A%0A__generated_with%20%3D%20%220.10.19%22%0Aapp%20%3D%20marimo.App(width%3D%22medium%22)%0A%0A%0A%40app.cell%0Adef%20_()%3A%0A%20%20%20%20import%20marimo%20as%20mo%0A%0A%20%20%20%20from%20flowshow%20import%20task%0A%20%20%20%20return%20mo%2C%20task%0A%0A%0A%40app.cell%0Adef%20_(task)%3A%0A%20%20%20%20import%20time%0A%20%20%20%20import%20datetime%20as%20dt%0A%0A%20%20%20%20def%20loggg(msg)%3A%0A%20%20%20%20%20%20%20%20print(f%22%7Bdt.datetime.now()%7D%20-%20%7Bmsg%7D%22)%0A%0A%20%20%20%20%40task%0A%20%20%20%20def%20load_data(a)%3A%0A%20%20%20%20%20%20%20%20loggg(%22loading%20the%20data%22)%0A%20%20%20%20%20%20%20%20time.sleep(0.6)%0A%20%20%20%20%20%20%20%20loggg(%22totally%20loaded%2C%20aye!%22)%0A%20%20%20%20%20%20%20%20return%20%5Ba%20for%20i%20in%20range(10)%5D%0A%0A%20%20%20%20%40task%0A%20%20%20%20def%20merge(a%2C%20b)%3A%0A%20%20%20%20%20%20%20%20loggg(%22about%20to%20merge%22)%0A%20%20%20%20%20%20%20%20time.sleep(0.4)%0A%20%20%20%20%20%20%20%20loggg(%22merging%22)%0A%20%20%20%20%20%20%20%20loggg(%22done%22)%0A%20%20%20%20%20%20%20%20return%20zip(a%2C%20b)%0A%0A%20%20%20%20%40task%0A%20%20%20%20def%20doit()%3A%0A%20%20%20%20%20%20%20%20loggg(%22starting%20doit%22)%0A%20%20%20%20%20%20%20%20time.sleep(0.5)%0A%20%20%20%20%20%20%20%20a%20%3D%20load_data(1)%0A%20%20%20%20%20%20%20%20b%20%3D%20load_data(2)%0A%20%20%20%20%20%20%20%20loggg(%22it%20done!%22)%0A%0A%20%20%20%20%40task%0A%20%20%20%20def%20main()%3A%0A%20%20%20%20%20%20%20%20for%20i%20in%20range(2)%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20time.sleep(0.7)%0A%20%20%20%20%20%20%20%20%20%20%20%20loggg(%22starting%20job%201%22)%0A%20%20%20%20%20%20%20%20%20%20%20%20doit()%0A%20%20%20%20%20%20%20%20%20%20%20%20loggg(%22starting%20job%202%22)%0A%20%20%20%20%20%20%20%20%20%20%20%20doit()%0A%20%20%20%20%20%20%20%20%20%20%20%20loggg(%22done%22)%0A%20%20%20%20%20%20%20%20%20%20%20%20return%20%22done%20!%22%0A%0A%20%20%20%20result%20%3D%20main()%0A%20%20%20%20return%20doit%2C%20dt%2C%20load_data%2C%20loggg%2C%20main%2C%20merge%2C%20result%2C%20time%0A%0A%0A%40app.cell%0Adef%20_(main%2C%20mo)%3A%0A%20%20%20%20chart%20%3D%20mo.ui.altair_chart(main.last_run.plot())%0A%20%20%20%20chart%0A%20%20%20%20return%20(chart%2C)%0A%0A%0A%40app.cell%0Adef%20_(chart)%3A%0A%20%20%20%20if%20chart.value%5B%22logs%22%5D.shape%5B0%5D%20%3E%200%3A%0A%20%20%20%20%20%20%20%20print(list(chart.value%5B%22logs%22%5D)%5B0%5D)%0A%20%20%20%20return%0A%0A%0A%40app.cell%0Adef%20_()%3A%0A%20%20%20%20return%0A%0A%0Aif%20__name__%20%3D%3D%20%22__main__%22%3A%0A%20%20%20%20app.run()%0A</marimo-code></head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

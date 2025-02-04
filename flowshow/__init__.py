@@ -144,9 +144,11 @@ class TaskDefinition:
         """Returns the most recent run of this task"""
         return self.runs[-1] if self.runs else None
 
-    @property
     def plot(self):
         return self.last_run.plot()
+    
+    def to_dataframe(self):
+        return self.last_run.to_dataframe()
 
     def get_all_runs_history(self) -> List[Dict[str, Any]]:
         """Returns the complete history of all runs with their nested subtasks."""
