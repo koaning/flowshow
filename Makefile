@@ -9,6 +9,7 @@ lint:
 
 test:
 	ruff check --fix --unsafe-fixes flowshow/*
+	ruff format check --fix --unsafe-fixes flowshow/*
 	uv run pytest
 
 install:

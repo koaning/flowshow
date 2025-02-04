@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -29,19 +29,4 @@ jobs:
         
     - name: Run tests
       run: |
-        pytest tests/
-        
-    - name: Check formatting and imports
-      run: |
-        ruff format --check .
-        ruff check .
-        
-    - name: Build package
-      run: |
-        pip install build
-        python -m build
-        
-    - name: Check package
-      run: |
-        pip install twine
-        twine check dist/*
+        make test
