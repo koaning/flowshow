@@ -18,6 +18,7 @@ from .visualize import flatten_tasks
 # Thread-local storage for tracking the current task
 _task_context = threading.local()
 
+
 @dataclass
 class TaskRun:
     task_name: str
@@ -27,11 +28,11 @@ class TaskRun:
     inputs: Dict[str, Any] = field(default_factory=dict)
     output: Any = None
     error: Optional[Exception] = None
-    subtasks: List['TaskRun'] = field(default_factory=list)
+    subtasks: List["TaskRun"] = field(default_factory=list)
     logs: Optional[str] = None
     retry_count: int = 0
 
-    def add_subtask(self, subtask: 'TaskRun'):
+    def add_subtask(self, subtask: "TaskRun"):
         self.subtasks.append(subtask)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -42,7 +43,7 @@ class TaskRun:
             "duration": self.duration,
             "inputs": self.inputs,
             "error": str(self.error) if self.error else None,
-            "retry_count": self.retry_count
+            "retry_count": self.retry_count,
         }
 
         if self.end_time:
@@ -59,29 +60,28 @@ class TaskRun:
             result["subtasks"] = [task.to_dict() for task in self.subtasks]
 
         return result
-    
+
     def to_dataframe(self):
         return pd.DataFrame(flatten_tasks(self.to_dict()))
-    
+
     def plot(self):
         dataf = self.to_dataframe()
-        return alt.Chart(dataf).mark_bar().encode(
-            x=alt.X('start_time:T', title='Time'),
-            x2='end_time:T',
-            y=alt.Y('task_name:N', 
-                    title='Task',
-                    sort=alt.EncodingSortField(field='start_time', order='ascending')),
-            tooltip=['task_name', 'duration']
-        ).properties(
-            width=800,
-            height=400,
-            title='Task Timeline'
+        return (
+            alt.Chart(dataf)
+            .mark_bar()
+            .encode(
+                x=alt.X("start_time:T", title="Time"),
+                x2="end_time:T",
+                y=alt.Y("task_name:N", title="Task", sort=alt.EncodingSortField(field="start_time", order="ascending")),
+                tooltip=["task_name", "duration"],
+            )
+            .properties(width=800, height=400, title="Task Timeline")
         )
 
 
 @contextmanager
 def _task_run_context(run: TaskRun):
-    parent = getattr(_task_context, 'current_run', None)
+    parent = getattr(_task_context, "current_run", None)
     _task_context.current_run = run
     try:
         yield
@@ -89,6 +89,7 @@ def _task_run_context(run: TaskRun):
         if parent is not None:
             parent.add_subtask(run)
         _task_context.current_run = parent
+
 
 @dataclass
 class TaskDefinition:
@@ -102,10 +103,7 @@ class TaskDefinition:
         run = TaskRun(
             task_name=self.name,
             start_time=datetime.now(timezone.utc),
-            inputs={
-                **{f"arg{i}": arg for i, arg in enumerate(args)},
-                **kwargs
-            }
+            inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
         )
 
         with _task_run_context(run):
@@ -136,7 +134,7 @@ class TaskDefinition:
 
             finally:
                 # Always add the run to history if this is a top-level task
-                if getattr(_task_context, 'current_run', None) is run:
+                if getattr(_task_context, "current_run", None) is run:
                     self.runs.append(run)
 
             return result
@@ -145,7 +143,7 @@ class TaskDefinition:
     def last_run(self) -> Optional[TaskRun]:
         """Returns the most recent run of this task"""
         return self.runs[-1] if self.runs else None
-    
+
     @property
     def plot(self):
         return self.last_run.plot()
@@ -154,12 +152,13 @@ class TaskDefinition:
         """Returns the complete history of all runs with their nested subtasks."""
         return [run.to_dict() for run in self.runs]
 
+
 def task(
-    func: Optional[Callable] = None, 
-    *, 
+    func: Optional[Callable] = None,
+    *,
     log: bool = True,
     retry_on: Optional[Union[Type[Exception], Tuple[Type[Exception], ...]]] = None,
-    retry_attempts: Optional[int] = None
+    retry_attempts: Optional[int] = None,
 ) -> Callable:
     """Decorator to mark a function as a trackable task.
 
@@ -169,6 +168,7 @@ def task(
         retry_on: Exception or tuple of exceptions to retry on
         retry_attempts: Number of retry attempts
     """
+
     def decorator(f: Callable) -> TaskDefinition:
         # Apply stamina retry if retry parameters are provided
         if retry_on is not None and retry_attempts is not None:

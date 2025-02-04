@@ -13,7 +13,7 @@ def test_basic_task():
 
     result = simple_task(5)
     assert result == 10
-    
+
     # Check task run information
     last_run = simple_task.last_run
     assert last_run.task_name == "simple_task"
@@ -36,7 +36,7 @@ def test_nested_tasks():
 
     result = outer_task(5)
     assert result == 12
-    
+
     # Check task hierarchy
     outer_run = outer_task.last_run
     assert len(outer_run.subtasks) == 1
@@ -55,7 +55,7 @@ def test_task_with_logs():
 
     result = logging_task()
     assert result == 42
-    
+
     last_run = logging_task.last_run
     assert "Starting task" in last_run.logs
     assert "Task complete" in last_run.logs
@@ -68,7 +68,7 @@ def test_task_with_error():
 
     with pytest.raises(ValueError, match="Task failed"):
         failing_task()
-    
+
     last_run = failing_task.last_run
     assert isinstance(last_run.error, ValueError)
     assert str(last_run.error) == "Task failed"
@@ -95,7 +95,7 @@ def test_task_run_history():
 
     for i in range(3):
         counter_task(i)
-    
+
     history = counter_task.get_all_runs_history()
     assert len(history) == 3
     assert all(isinstance(run, dict) for run in history)
@@ -110,7 +110,7 @@ def test_task_visualization():
 
     visualized_task()
     chart = visualized_task.plot
-    
+
     # Check that the chart has the basic Altair structure
     assert chart.mark == "bar"
     assert "start_time" in str(chart.encoding.x)
