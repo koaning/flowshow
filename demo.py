@@ -5,76 +5,73 @@ app = marimo.App(width="medium")
 
 
 @app.cell
-def _():
-    import marimo as mo
-
-    from flowshow import task
-
-    return mo, task
-
-
-@app.cell
-def _(task):
-    import time
-    import datetime as dt
-
-    def loggg(msg):
-        print(f"{dt.datetime.now()} - {msg}")
-
-    @task
-    def load_data(a):
-        loggg("loading the data")
-        time.sleep(0.6)
-        loggg("totally loaded, aye!")
-        return [a for i in range(10)]
-
-    @task
-    def merge(a, b):
-        loggg("about to merge")
-        time.sleep(0.4)
-        loggg("merging")
-        loggg("done")
-        return zip(a, b)
-
-    @task
-    def doit():
-        loggg("starting doit")
-        time.sleep(0.5)
-        a = load_data(1)
-        b = load_data(2)
-        loggg("it done!")
-
-    @task
-    def main():
-        for i in range(2):
-            time.sleep(0.7)
-            loggg("starting job 1")
-            doit()
-            loggg("starting job 2")
-            doit()
-            loggg("done")
-            return "done !"
-
-    result = main()
-    return doit, dt, load_data, loggg, main, merge, result, time
-
-
-@app.cell
-def _(main, mo):
-    chart = mo.ui.altair_chart(main.last_run.plot())
-    chart
-    return (chart,)
-
-
-@app.cell
-def _(chart):
-    if chart.value["logs"].shape[0] > 0:
-        print(list(chart.value["logs"])[0])
+def _(mo):
+    mo.md("Flowshow provides a `@task` decorator that helps you track and visualize the execution of your Python functions. Here's how to use it:")
     return
 
 
 @app.cell
 def _():
+    import time
+    import random
+
+    from flowshow import task
+
+    # Turns a function into a Task, which tracks a bunch of stuff
+    @task
+    def my_function(x):
+        print("This function should always run")
+        time.sleep(0.5)
+        return x * 2
+
+    # Tasks can also be configured to handle retries
+    @task(retry_on=ValueError, retry_attempts=10)
+    def might_fail():
+        print("This function call might fail")
+        time.sleep(1.0)
+        if random.random() < 0.75:
+            raise ValueError("oh no, error!")
+        print("The function has passed! Yay!")
+        return "done"
+
+    @task
+    def main_job():
+        print("This output will be captured by the task")
+        for i in range(3):
+            my_function(10)
+            might_fail()
+        return "done"
+
+    # Run like you might run a normal function
+    _ = main_job()
+    return main_job, might_fail, my_function, random, task, time
+
+
+@app.cell
+def _(main_job):
+    out = main_job.to_dataframe()
+    return (out,)
+
+
+@app.cell
+def _(out):
+    out
+    return
+
+
+@app.cell(hide_code=True)
+def _(main_job):
+    import marimo as mo
+
+    chart = mo.ui.altair_chart(main_job.plot())
+    chart
+    return chart, mo
+
+
+@app.cell(hide_code=True)
+def _(chart):
+    if chart.value["logs"].shape[0] > 0:
+        print(list(chart.value["logs"])[0])
     return
 
 
