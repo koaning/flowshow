@@ -62,6 +62,7 @@ main_job.last_run.to_dict()
 
 <details>
 <summary>Show the full dictionary.</summary>
+
 ```
 {
   "task_name": "main_job",
@@ -149,6 +150,7 @@ main_job.last_run.to_dict()
   ]
 }
 ```
+
 </details>
 
 You can also get a flat representation of the same data in a dataframe via:
