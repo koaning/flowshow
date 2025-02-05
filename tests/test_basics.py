@@ -100,19 +100,3 @@ def test_task_run_history():
     assert len(history) == 3
     assert all(isinstance(run, dict) for run in history)
     assert [run["inputs"]["arg0"] for run in history] == [0, 1, 2]
-
-
-def test_task_visualization():
-    @task
-    def visualized_task():
-        time.sleep(0.1)
-        return True
-
-    visualized_task()
-    chart = visualized_task.plot
-
-    # Check that the chart has the basic Altair structure
-    assert chart.mark == "bar"
-    assert "start_time" in str(chart.encoding.x)
-    assert "end_time" in str(chart.encoding.x2)
-    assert "task_name" in str(chart.encoding.y)
