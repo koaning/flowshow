@@ -4,6 +4,7 @@ import io
 import sys
 import threading
 import time
+import contextvars
 from contextlib import contextmanager, redirect_stdout
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -16,8 +17,8 @@ import stamina
 
 from .visualize import flatten_tasks
 
-# Thread-local storage for tracking the current task
-_task_context = threading.local()
+# Replace threading.local() with contextvars.ContextVar
+_task_context = contextvars.ContextVar('task_context', default=None)
 
 LogLevel = Literal["INFO", "WARNING", "ERROR", "DEBUG"]
 
@@ -94,14 +95,17 @@ class TaskRun:
 
 @contextmanager
 def _task_run_context(run: TaskRun):
-    parent = getattr(_task_context, "current_run", None)
-    _task_context.current_run = run
+    # Get the parent task run (if any)
+    parent = _task_context.get()
+    # Save the previous context and set the new one
+    token = _task_context.set(run)
     try:
         yield
     finally:
         if parent is not None:
             parent.add_subtask(run)
-        _task_context.current_run = parent
+        # Restore the previous context
+        _task_context.reset(token)
 
 
 @dataclass
@@ -156,7 +160,7 @@ class TaskDefinition:
 
             finally:
                 # Always add the run to history if this is a top-level task
-                if getattr(_task_context, "current_run", None) is run:
+                if _task_context.get() is run:
                     self.runs.append(run)
 
             return result
@@ -203,7 +207,7 @@ def task(
         return decorator
     return decorator(func)
 
-def add_artifacts(artifacts: Dict[str, Any]) -> bool:
+def add_artifacts(**artifacts: Dict[str, Any]) -> bool:
     """Add artifacts to the currently running task.
     
     Args:
@@ -212,12 +216,12 @@ def add_artifacts(artifacts: Dict[str, Any]) -> bool:
     Returns:
         True if artifacts were added successfully, False if no task is running
     """
-    current_run = getattr(_task_context, "current_run", None)
+    current_run = _task_context.get()
     if current_run is None:
         return False
     
     # Update the artifacts dictionary with the new artifacts
-    current_run.artifacts.update(artifacts)
+    current_run.artifacts.update(**artifacts)
     return True
 
 def log(level: LogLevel, message: str) -> bool:
@@ -230,7 +234,7 @@ def log(level: LogLevel, message: str) -> bool:
     Returns:
         True if log was added successfully, False if no task is running
     """
-    current_run = getattr(_task_context, "current_run", None)
+    current_run = _task_context.get()
     if current_run is None:
         return False
     

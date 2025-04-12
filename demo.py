@@ -23,9 +23,7 @@ def _():
     def my_function(x):
         info("This function should always run")
         time.sleep(0.5)
-        add_artifacts({
-            "foo": "Bar"
-        })
+        add_artifacts(foo=1, bar=2)
         return x * 2
 
     # Tasks can also be configured to handle retries
