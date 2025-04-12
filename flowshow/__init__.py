@@ -1,3 +1,4 @@
+import uuid
 import inspect
 import io
 import sys
@@ -7,7 +8,7 @@ from contextlib import contextmanager, redirect_stdout
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, Literal
 
 import altair as alt
 import pandas as pd
@@ -18,6 +19,7 @@ from .visualize import flatten_tasks
 # Thread-local storage for tracking the current task
 _task_context = threading.local()
 
+LogLevel = Literal["INFO", "WARNING", "ERROR", "DEBUG"]
 
 @dataclass
 class TaskRun:
@@ -29,28 +31,39 @@ class TaskRun:
     output: Any = None
     error: Optional[Exception] = None
     subtasks: List["TaskRun"] = field(default_factory=list)
-    logs: Optional[str] = None
+    logs: List[List[str]] = field(default_factory=list)
     retry_count: int = 0
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    artifacts: Dict[str, Any] = field(default_factory=dict)
 
     def add_subtask(self, subtask: "TaskRun"):
         self.subtasks.append(subtask)
 
+    def _log(self, level: LogLevel, message: str) -> None:
+        """Add a log entry with the specified level."""
+        self.logs.append([level, message, datetime.now(timezone.utc).isoformat()])
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert the task run and all its subtasks to a nested dictionary."""
         result = {
+            "id": self.id,
             "task_name": self.task_name,
             "start_time": self.start_time.isoformat(),
             "duration": self.duration,
             "inputs": self.inputs,
             "error": str(self.error) if self.error else None,
             "retry_count": self.retry_count,
+            "artifacts": self.artifacts,
         }
 
         if self.end_time:
             result["end_time"] = self.end_time.isoformat()
 
-        if self.logs is not None:
+        if self.logs:
             result["logs"] = self.logs
+
+        if self.artifacts:
+            result["artifacts"] = self.artifacts
 
         # Only include output if it's a simple type that can be serialized
         if isinstance(self.output, (str, int, float, bool, type(None))):
@@ -101,7 +114,7 @@ class TaskDefinition:
     def __call__(self, *args, **kwargs):
         # Create a new run
         run = TaskRun(
-            task_name=self.name,
+            task_name="CALLING: " + self.name,
             start_time=datetime.now(timezone.utc),
             inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
         )
@@ -112,10 +125,17 @@ class TaskDefinition:
                 start = time.perf_counter()
 
                 if self.capture_logs:
+                    # We still capture stdout but now we'll add it as an INFO log
                     stdout_capture = io.StringIO()
                     with redirect_stdout(stdout_capture):
                         result = self.func(*args, **kwargs)
-                    run.logs = stdout_capture.getvalue()
+                    
+                    # Add captured stdout as INFO logs, one per line
+                    captured_output = stdout_capture.getvalue()
+                    if captured_output:
+                        for line in captured_output.splitlines():
+                            if line.strip():  # Skip empty lines
+                                run.info(line)
                 else:
                     result = self.func(*args, **kwargs)
 
@@ -130,6 +150,8 @@ class TaskDefinition:
                 # Record error if task fails
                 run.end_time = datetime.now(timezone.utc)
                 run.error = e
+                # Add the error to logs as well
+                run.error(str(e))
                 raise
 
             finally:
@@ -180,3 +202,54 @@ def task(
     if func is None:
         return decorator
     return decorator(func)
+
+def add_artifacts(artifacts: Dict[str, Any]) -> bool:
+    """Add artifacts to the currently running task.
+    
+    Args:
+        artifacts: Dictionary of artifact name to artifact value
+        
+    Returns:
+        True if artifacts were added successfully, False if no task is running
+    """
+    current_run = getattr(_task_context, "current_run", None)
+    if current_run is None:
+        return False
+    
+    # Update the artifacts dictionary with the new artifacts
+    current_run.artifacts.update(artifacts)
+    return True
+
+def log(level: LogLevel, message: str) -> bool:
+    """Add a log message to the currently running task.
+    
+    Args:
+        level: Log level ("INFO", "WARNING", "ERROR", "DEBUG")
+        message: The log message
+        
+    Returns:
+        True if log was added successfully, False if no task is running
+    """
+    current_run = getattr(_task_context, "current_run", None)
+    if current_run is None:
+        return False
+    
+    current_run._log(level, message)
+    return True
+
+# Convenience methods for different log levels
+def info(message: str) -> bool:
+    """Add an INFO level log message to the currently running task."""
+    return log("INFO", message)
+
+def warning(message: str) -> bool:
+    """Add a WARNING level log message to the currently running task."""
+    return log("WARNING", message)
+
+def error(message: str) -> bool:
+    """Add an ERROR level log message to the currently running task."""
+    return log("ERROR", message)
+
+def debug(message: str) -> bool:
+    """Add a DEBUG level log message to the currently running task."""
+    return log("DEBUG", message)
