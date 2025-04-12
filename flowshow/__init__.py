@@ -5,7 +5,7 @@ import sys
 import threading
 import time
 import contextvars
-from contextlib import contextmanager, redirect_stdout
+from contextlib import contextmanager, redirect_stdout, asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
@@ -113,6 +113,18 @@ def _task_run_context(run: TaskRun):
         _task_context.reset(token)
 
 
+@asynccontextmanager
+async def _async_task_run_context(run: TaskRun):
+    parent = _task_context.get()
+    token = _task_context.set(run)
+    try:
+        yield
+    finally:
+        if parent is not None:
+            parent.add_subtask(run)
+        _task_context.reset(token)
+
+
 @dataclass
 class TaskDefinition:
     func: Callable
@@ -120,15 +132,28 @@ class TaskDefinition:
     capture_logs: bool = False
     callback: Optional[Callable[[Dict[str, Any]], None]] = None
     runs: List[TaskRun] = field(default_factory=list)
+    is_async: bool = field(default=False)
+
+    def __post_init__(self):
+        # Detect if the wrapped function is async
+        self.is_async = inspect.iscoroutinefunction(self.func)
 
     def __call__(self, *args, **kwargs):
+        if self.is_async:
+            # Return awaitable for async functions
+            return self._async_call(*args, **kwargs)
+        else:
+            # Execute synchronously for regular functions
+            return self._sync_call(*args, **kwargs)
+    
+    def _sync_call(self, *args, **kwargs):
         # Create a new run
         run = TaskRun(
             task_name="CALLING: " + self.name,
             start_time=datetime.now(timezone.utc),
             inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
         )
-
+        
         with _task_run_context(run):
             try:
                 # Execute the task
@@ -197,6 +222,56 @@ class TaskDefinition:
     def get_all_runs_history(self) -> List[Dict[str, Any]]:
         """Returns the complete history of all runs with their nested subtasks."""
         return [run.to_dict() for run in self.runs]
+
+    async def _async_call(self, *args, **kwargs):
+        # Create a new run
+        run = TaskRun(
+            task_name="CALLING: " + self.name,
+            start_time=datetime.now(timezone.utc),
+            inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
+        )
+        
+        # Need async context manager
+        async with _async_task_run_context(run):
+            try:
+                # Execute the task
+                start = time.perf_counter()
+                
+                if self.capture_logs:
+                    # Handling logs in async is more complex
+                    # Simplified version for now
+                    result = await self.func(*args, **kwargs)
+                else:
+                    result = await self.func(*args, **kwargs)
+                
+                end = time.perf_counter()
+                
+                # Record successful completion
+                run.end_time = datetime.now(timezone.utc)
+                run.duration = end - start
+                run.output = result
+                
+            except Exception as e:
+                # Similar error handling as in sync version
+                run.end_time = datetime.now(timezone.utc)
+                run.error = e
+                run.error_traceback = traceback.format_exc()
+                error(str(e))
+                raise
+                
+            finally:
+                # Same callback and bookkeeping logic
+                if _task_context.get() is run:
+                    self.runs.append(run)
+                    
+                if self.callback is not None:
+                    try:
+                        self.callback(run.to_dict())
+                    except Exception as callback_error:
+                        error_msg = f"Task callback error: {str(callback_error)}"
+                        run._log("ERROR", error_msg)
+                        
+            return result
 
 
 def task(
