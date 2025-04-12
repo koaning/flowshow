@@ -16,7 +16,7 @@ def test_basic_task():
 
     # Check task run information
     last_run = simple_task.last_run
-    assert last_run.task_name == "simple_task"
+    assert last_run.task_name == "CALLING: simple_task"
     assert isinstance(last_run.start_time, datetime)
     assert isinstance(last_run.end_time, datetime)
     assert last_run.duration > 0
@@ -41,7 +41,7 @@ def test_nested_tasks():
     outer_run = outer_task.last_run
     assert len(outer_run.subtasks) == 1
     inner_run = outer_run.subtasks[0]
-    assert inner_run.task_name == "inner_task"
+    assert inner_run.task_name == "CALLING: inner_task"
     assert inner_run.inputs == {"arg0": 5}
     assert inner_run.output == 6
 
@@ -116,3 +116,44 @@ def test_task_visualization():
     assert "start_time" in str(chart.encoding.x)
     assert "end_time" in str(chart.encoding.x2)
     assert "task_name" in str(chart.encoding.y)
+
+
+def test_task_callbacks():
+    # Track callback executions
+    callback_executions = []
+    
+    def record_callback(task_data):
+        callback_executions.append(task_data)
+    
+    # Test successful task with callback
+    @task(callback=record_callback)
+    def success_task(x):
+        return x * 2
+    
+    # Test task with error and callback
+    @task(callback=record_callback)
+    def error_task():
+        raise ValueError("Expected error")
+    
+    # Run the successful task
+    result = success_task(5)
+    assert result == 10
+    
+    # Run the failing task (should raise but callback should still execute)
+    with pytest.raises(ValueError, match="Expected error"):
+        error_task()
+    
+    # Verify both callbacks executed
+    assert len(callback_executions) == 2
+    
+    # Check successful task callback data
+    success_data = callback_executions[0]
+    assert success_data["task_name"] == "CALLING: success_task"
+    assert success_data["error"] is None
+    assert success_data["inputs"]["arg0"] == 5
+    
+    # Check error task callback data
+    error_data = callback_executions[1]
+    assert error_data["task_name"] == "CALLING: error_task"
+    assert "Expected error" in error_data["error"]
+    assert error_data["error_traceback"] is not None  # Traceback should be present

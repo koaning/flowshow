@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, Literal
+import traceback
 
 import altair as alt
 import pandas as pd
@@ -31,6 +32,7 @@ class TaskRun:
     inputs: Dict[str, Any] = field(default_factory=dict)
     output: Any = None
     error: Optional[Exception] = None
+    error_traceback: Optional[str] = None
     subtasks: List["TaskRun"] = field(default_factory=list)
     logs: List[List[str]] = field(default_factory=list)
     retry_count: int = 0
@@ -54,6 +56,7 @@ class TaskRun:
             "duration": self.duration,
             "inputs": self.inputs,
             "error": str(self.error) if self.error else None,
+            "error_traceback": self.error_traceback,
             "retry_count": self.retry_count,
             "artifacts": self.artifacts,
             "table": self.table,
@@ -115,6 +118,7 @@ class TaskDefinition:
     func: Callable
     name: str
     capture_logs: bool = False
+    callback: Optional[Callable[[Dict[str, Any]], None]] = None
     runs: List[TaskRun] = field(default_factory=list)
 
     def __call__(self, *args, **kwargs):
@@ -156,15 +160,27 @@ class TaskDefinition:
                 # Record error if task fails
                 run.end_time = datetime.now(timezone.utc)
                 run.error = e
+                # Capture the full traceback as a formatted string with linebreaks
+                run.error_traceback = traceback.format_exc()
                 # Add the error to logs as well
-                run.error(str(e))
+                error(str(e))
                 raise
 
             finally:
                 # Always add the run to history if this is a top-level task
                 if _task_context.get() is run:
                     self.runs.append(run)
-
+                    
+                # Execute the callback if provided
+                if self.callback is not None:
+                    try:
+                        # Convert TaskRun to dictionary before passing to callback
+                        self.callback(run.to_dict())
+                    except Exception as callback_error:
+                        # Log but don't propagate callback errors
+                        error_msg = f"Task callback error: {str(callback_error)}"
+                        run._log("ERROR", error_msg)
+                        
             return result
 
     @property
@@ -189,6 +205,7 @@ def task(
     log: bool = True,
     retry_on: Optional[Union[Type[Exception], Tuple[Type[Exception], ...]]] = None,
     retry_attempts: Optional[int] = None,
+    callback: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Callable:
     """Decorator to mark a function as a trackable task.
 
@@ -197,13 +214,15 @@ def task(
         log: If True, capture stdout during task execution
         retry_on: Exception or tuple of exceptions to retry on
         retry_attempts: Number of retry attempts
+        callback: Function to call after task completion (success or failure)
+                 The callback receives the task run data as a dictionary
     """
 
     def decorator(f: Callable) -> TaskDefinition:
         # Apply stamina retry if retry parameters are provided
         if retry_on is not None and retry_attempts is not None:
             f = stamina.retry(on=retry_on, attempts=retry_attempts)(f)
-        return TaskDefinition(func=f, name=f.__name__, capture_logs=log)
+        return TaskDefinition(func=f, name=f.__name__, capture_logs=log, callback=callback)
 
     if func is None:
         return decorator
