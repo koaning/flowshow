@@ -36,6 +36,7 @@ class TaskRun:
     retry_count: int = 0
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     artifacts: Dict[str, Any] = field(default_factory=dict)
+    table: Dict[str, Any] = field(default_factory=dict)
 
     def add_subtask(self, subtask: "TaskRun"):
         self.subtasks.append(subtask)
@@ -55,6 +56,7 @@ class TaskRun:
             "error": str(self.error) if self.error else None,
             "retry_count": self.retry_count,
             "artifacts": self.artifacts,
+            "table": self.table,
         }
 
         if self.end_time:
@@ -222,6 +224,23 @@ def add_artifacts(**artifacts: Dict[str, Any]) -> bool:
     
     # Update the artifacts dictionary with the new artifacts
     current_run.artifacts.update(**artifacts)
+    return True
+
+def add_table(**table_items: Dict[str, Any]) -> bool:
+    """Add artifacts to the currently running task.
+    
+    Args:
+        artifacts: Dictionary of artifact name to artifact value
+        
+    Returns:
+        True if artifacts were added successfully, False if no task is running
+    """
+    current_run = _task_context.get()
+    if current_run is None:
+        return False
+    
+    # Update the artifacts dictionary with the new artifacts
+    current_run.table.update(**table_items)
     return True
 
 def log(level: LogLevel, message: str) -> bool:
