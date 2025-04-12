@@ -221,7 +221,21 @@ def task(
     def decorator(f: Callable) -> TaskDefinition:
         # Apply stamina retry if retry parameters are provided
         if retry_on is not None and retry_attempts is not None:
-            f = stamina.retry(on=retry_on, attempts=retry_attempts)(f)
+            # Create a wrapper that logs retries
+            original_func = f
+            
+            # This will be called by stamina on each retry
+            @wraps(original_func)
+            def retry_wrapper(*args, **kwargs):
+                current_run = _task_context.get()
+                if current_run is not None:
+                    current_run.retry_count += 1
+                    warning(f"Retrying task (attempt {current_run.retry_count}/{retry_attempts}) after error")
+                return original_func(*args, **kwargs)
+            
+            # Apply stamina retry to our wrapper
+            f = stamina.retry(on=retry_on, attempts=retry_attempts)(retry_wrapper)
+            
         return TaskDefinition(func=f, name=f.__name__, capture_logs=log, callback=callback)
 
     if func is None:
