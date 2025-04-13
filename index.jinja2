@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Span Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.12.0/cdn.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.3.0/luxon.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .task-bar {
+            position: relative;
+            height: 16px;
+            border-radius: 2px;
+            opacity: 0.8;
+        }
+        .toggle-icon {
+            transition: transform 0.2s ease;
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .toggle-icon.expanded {
+            transform: rotate(90deg);
+        }
+        body {
+            background-color: #0f1924;
+            color: #e6edf3;
+        }
+        .task-info {
+            font-family: monospace;
+        }
+        .task-row {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid #1c2a3a;
+            cursor: pointer;
+        }
+        .task-row:hover {
+            background-color: #1c2a3a;
+        }
+        .timestamp {
+            font-family: monospace;
+            color: #8b949e;
+        }
+        .detail-panel {
+            background-color: #1c2a3a;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="p-4 m-0">
+    <div class="min-h-screen" x-data="taskData()">
+        <div class="flex">
+            <!-- Task list (left) -->
+            <div class="w-1/2 border-r border-gray-800">
+                <!-- Parent task row -->
+                <div class="task-row" 
+                     :class="{'bg-blue-900 bg-opacity-30': selectedTaskId === allTasks[0].id}"
+                     @mouseenter="hoveredTask = allTasks[0]"
+                     @mouseleave="hoveredTask = null"
+                     @click="selectTask(allTasks[0])">
+                    
+                    <div class="timestamp w-24 pl-4" x-text="formatTime(allTasks[0].start_time)"></div>
+
+                    <div class="task-info flex-grow overflow-hidden whitespace-nowrap text-ellipsis flex items-center">
+                        <span class="toggle-icon mr-2" 
+                              :class="{'expanded': expanded}"
+                              @click.stop="expanded = !expanded">▶</span>
+                        <span x-text="allTasks[0].task_name"></span>
+                    </div>
+                    
+                    <div class="flex-grow-0 w-1/2 px-4 relative">
+                        <div class="task-bar bg-green-400" 
+                             :style="`left: ${timeToPosition(new Date(allTasks[0].start_time))}%; width: ${durationToWidth(allTasks[0].duration)}%;`">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Subtasks rows (only visible when expanded) -->
+                <template x-for="(subtask, index) in allTasks.slice(1)" :key="subtask.id">
+                    <div class="task-row" 
+                         x-show="expanded"
+                         :class="{'bg-blue-900 bg-opacity-30': selectedTaskId === subtask.id}"
+                         @mouseenter="hoveredTask = subtask"
+                         @mouseleave="hoveredTask = null"
+                         @click="selectTask(subtask)">
+                        
+                        <div class="timestamp w-24 pl-4" x-text="formatTime(subtask.start_time)"></div>
+
+                        <div class="task-info flex-grow overflow-hidden whitespace-nowrap text-ellipsis pl-8"
+                             x-text="subtask.task_name"></div>
+                        
+                        <div class="flex-grow-0 w-1/2 px-4 relative">
+                            <div class="task-bar bg-green-400" 
+                                 :style="`left: ${timeToPosition(new Date(subtask.start_time))}%; width: ${durationToWidth(subtask.duration)}%;`">
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            
+            <!-- Detail panel (right) -->
+            <div class="w-1/2 pl-4">
+                <div class="detail-panel p-4 h-full" x-show="hoveredTask || selectedTaskId">
+                    <template x-if="activeTask">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-lg" x-text="'Task Details'"></h3>
+                                <div class="bg-gray-700 px-2 py-1 rounded text-xs" x-text="`Duration: ${activeTask.duration.toFixed(2)}ms`"></div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="text-gray-400 text-sm">Name</div>
+                                <div class="font-mono text-sm" x-text="activeTask.task_name"></div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="text-gray-400 text-sm">Start Time</div>
+                                <div class="font-mono text-sm" x-text="formatDateTime(activeTask.start_time)"></div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="text-gray-400 text-sm">End Time</div>
+                                <div class="font-mono text-sm" x-text="formatDateTime(activeTask.end_time)"></div>
+                            </div>
+                            
+                            <template x-if="activeTask.inputs && Object.keys(activeTask.inputs).length > 0">
+                                <div class="mb-4">
+                                    <div class="text-gray-400 text-sm">Inputs</div>
+                                    <div class="font-mono text-sm bg-gray-800 p-2 rounded mt-1 overflow-auto">
+                                        <pre x-text="JSON.stringify(activeTask.inputs, null, 2)"></pre>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.output">
+                                <div class="mb-4">
+                                    <div class="text-gray-400 text-sm">Output</div>
+                                    <div class="font-mono text-sm bg-gray-800 p-2 rounded mt-1 overflow-auto">
+                                        <div x-text="activeTask.output"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.logs && activeTask.logs.length > 0">
+                                <div class="mb-4">
+                                    <div class="text-gray-400 text-sm">Logs</div>
+                                    <div class="font-mono text-sm bg-gray-800 p-2 rounded mt-1 overflow-auto">
+                                        <template x-for="log in activeTask.logs">
+                                            <div class="mb-1">
+                                                <span :class="getLogLevelClass(log[0])" x-text="log[0] + ':'"></span>
+                                                <span x-text="log[1]"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function taskData() {
+            const data = {{data|tojson|safe}};
+
+            // Calculate global start and end times
+            const startTime = new Date(data.start_time);
+            let endTime = new Date(data.end_time);
+            
+            // Create flattened array for display
+            const allTasks = [];
+            
+            // Add parent task first
+            allTasks.push({
+                ...data,
+                task_type: "parent"
+            });
+            
+            // Add all subtasks
+            if (data.subtasks) {
+                data.subtasks.forEach(subtask => {
+                    allTasks.push({
+                        ...subtask,
+                        task_type: "subtask"
+                    });
+                });
+            }
+            
+            // Sort by start time
+            allTasks.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+            
+            const totalDuration = (endTime - startTime) / 1000; // in seconds
+
+            return {
+                taskData: data,
+                allTasks: allTasks,
+                startTime,
+                endTime,
+                totalDuration,
+                hoveredTask: null,      // Task being hovered over
+                selectedTaskId: null,   // ID of task that was clicked
+                expanded: true,         // Controls visibility of subtasks
+                
+                // Returns the currently active task (either hovered or selected)
+                get activeTask() {
+                    if (this.hoveredTask) return this.hoveredTask;
+                    if (this.selectedTaskId) {
+                        return this.allTasks.find(task => task.id === this.selectedTaskId);
+                    }
+                    return null;
+                },
+                
+                // Select a task when clicked
+                selectTask(task) {
+                    if (this.selectedTaskId === task.id) {
+                        // If clicking the already selected task, deselect it
+                        this.selectedTaskId = null;
+                    } else {
+                        // Otherwise select the clicked task
+                        this.selectedTaskId = task.id;
+                    }
+                },
+                
+                timeToPosition(time) {
+                    return ((time - this.startTime) / (this.endTime - this.startTime)) * 100;
+                },
+                
+                durationToWidth(duration) {
+                    return (duration / this.totalDuration) * 100;
+                },
+                
+                formatTime(timeString) {
+                    const time = new Date(timeString);
+                    return time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+                },
+                
+                formatDateTime(dateString) {
+                    if (!dateString) return '';
+                    const dt = luxon.DateTime.fromISO(dateString);
+                    return dt.toFormat('HH:mm:ss.SSS');
+                },
+                
+                getLogLevelClass(level) {
+                    switch(level.toUpperCase()) {
+                        case 'INFO':
+                            return 'text-blue-400';
+                        case 'WARNING':
+                            return 'text-yellow-400';
+                        case 'ERROR':
+                            return 'text-red-400';
+                        case 'CRITICAL':
+                            return 'text-rose-500';
+                        case 'DEBUG':
+                            return 'text-slate-400';
+                        default:
+                            return 'text-gray-400';
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
