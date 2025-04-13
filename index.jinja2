@@ -76,7 +76,8 @@
                             </div>
                             
                             <div class="flex-grow-0 w-1/2 px-4 relative">
-                                <div class="task-bar bg-green-400" 
+                                <div class="task-bar" 
+                                     :class="task.error ? 'bg-red-500' : 'bg-green-400'"
                                      :style="`left: ${timeToPosition(new Date(task.start_time))}%; width: ${durationToWidth(task.duration)}%;`">
                                 </div>
                             </div>

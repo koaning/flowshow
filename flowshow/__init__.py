@@ -181,7 +181,9 @@ class TaskDefinition:
 
             except Exception as e:
                 # Record error if task fails
+                end = time.perf_counter()  # Calculate end time when error occurs
                 run.end_time = datetime.now(timezone.utc)
+                run.duration = end - start  # Set duration even when there's an error
                 run.error = e
                 # Capture the full traceback as a formatted string with linebreaks
                 run.error_traceback = traceback.format_exc()
@@ -250,8 +252,10 @@ class TaskDefinition:
                 run.output = result
                 
             except Exception as e:
-                # Similar error handling as in sync version
+                # Calculate duration even for errors
+                end = time.perf_counter()
                 run.end_time = datetime.now(timezone.utc)
+                run.duration = end - start  # Set duration for failed tasks
                 run.error = e
                 run.error_traceback = traceback.format_exc()
                 error(str(e))

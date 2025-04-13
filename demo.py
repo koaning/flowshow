@@ -32,11 +32,12 @@ def _():
         return x * 2
 
     # Tasks can also be configured to handle retries
-    @task(retry_on=ValueError, retry_attempts=3)
+    @task(retry_on=ValueError, retry_attempts=5)
     def might_fail():
         info("This function call might fail")
         time.sleep(0.2)
         my_function(2)
+        raise ValueError("oh noes")
         debug("The function has passed! Yay!")
         return "done"
 
@@ -68,8 +69,14 @@ def _():
 
 
 @app.cell
-def _(d, mo, template):
-    mo.iframe(template.render(data=d))
+def _(main_job):
+    main_job.last_run.to_dict()
+    return
+
+
+@app.cell
+def _(main_job, mo, template):
+    mo.iframe(template.render(data=main_job.last_run.to_dict()))
     return
 
 
@@ -101,20 +108,20 @@ async def _(error, info, task, time, warning):
     async def run_concurrent_tasks():
         """Run multiple sleep tasks concurrently"""
         start_time = time.time()
-    
+
         # Create multiple sleep tasks
         tasks = [
             async_sleep(2, "Task 1"),
             async_sleep(1, "Task 2"),
             async_sleep(3, "Task 3")
         ]
-    
+
         # Run tasks concurrently and gather results
         results = await asyncio.gather(*tasks)
-    
+
         end_time = time.time()
         total_time = end_time - start_time
-    
+
         # Return results and timing information
         return {
             "results": results,
@@ -135,13 +142,13 @@ async def _(error, info, task, time, warning):
 
 
 @app.cell
-def _(mo, run_many_nested):
+def _():
     from pathlib import Path 
     from jinja2 import Template 
 
     template = Template(Path("index.jinja2").read_text())
 
-    mo.iframe(template.render(data=run_many_nested.last_run.to_dict()))
+    # mo.iframe(template.render(data=run_many_nested.last_run.to_dict()))
     return Path, Template, template
 
 
