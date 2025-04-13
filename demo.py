@@ -1,7 +1,7 @@
 import marimo
 
 __generated_with = "0.12.8"
-app = marimo.App(width="medium")
+app = marimo.App(width="full")
 
 
 @app.cell
@@ -15,7 +15,7 @@ def _():
     import time
     import random
 
-    from flowshow import task, add_artifacts, info, debug
+    from flowshow import task, add_artifacts, info, debug, warning, error
 
     d = {}
 
@@ -27,7 +27,7 @@ def _():
     @task
     def my_function(x):
         info("This function should always run")
-        time.sleep(0.5)
+        time.sleep(0.2)
         add_artifacts(foo=1, bar=2)
         return x * 2
 
@@ -35,9 +35,8 @@ def _():
     @task(retry_on=ValueError, retry_attempts=3)
     def might_fail():
         info("This function call might fail")
-        time.sleep(1.0)
-        if random.random() < 0.9:
-            raise ValueError("oh no, error!")
+        time.sleep(0.2)
+        my_function(2)
         debug("The function has passed! Yay!")
         return "done"
 
@@ -55,6 +54,7 @@ def _():
         add_artifacts,
         d,
         debug,
+        error,
         info,
         main_job,
         might_fail,
@@ -63,7 +63,14 @@ def _():
         store,
         task,
         time,
+        warning,
     )
+
+
+@app.cell
+def _(d, mo, template):
+    mo.iframe(template.render(data=d))
+    return
 
 
 @app.cell
@@ -79,7 +86,7 @@ def _(main_job):
 
 
 @app.cell
-async def _(info, task, time):
+async def _(error, info, task, time, warning):
     import asyncio
 
     @task
@@ -87,6 +94,7 @@ async def _(info, task, time):
         """Asynchronous sleep function that returns a message after completion"""
         info("it works, right?")
         await asyncio.sleep(seconds)
+        info("it did!")
         return f"{name} finished sleeping for {seconds} seconds"
 
     @task
@@ -113,14 +121,28 @@ async def _(info, task, time):
             "total_time": f"Total execution time: {total_time:.2f} seconds"
         }
 
-    await run_concurrent_tasks()
-    return async_sleep, asyncio, run_concurrent_tasks
+    @task 
+    async def run_many_nested():
+        info("About to start task 1")
+        await run_concurrent_tasks()
+        info("About to start task 2")
+        await run_concurrent_tasks()
+        warning("They both ran!")
+        error("They both ran!")
+
+    await run_many_nested()
+    return async_sleep, asyncio, run_concurrent_tasks, run_many_nested
 
 
 @app.cell
-def _(run_concurrent_tasks):
-    run_concurrent_tasks.last_run.to_dict()
-    return
+def _(mo, run_many_nested):
+    from pathlib import Path 
+    from jinja2 import Template 
+
+    template = Template(Path("index.jinja2").read_text())
+
+    mo.iframe(template.render(data=run_many_nested.last_run.to_dict()))
+    return Path, Template, template
 
 
 @app.cell

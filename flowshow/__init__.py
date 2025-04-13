@@ -1,8 +1,6 @@
 import uuid
 import inspect
 import io
-import sys
-import threading
 import time
 import contextvars
 from contextlib import contextmanager, redirect_stdout, asynccontextmanager
@@ -149,7 +147,7 @@ class TaskDefinition:
     def _sync_call(self, *args, **kwargs):
         # Create a new run
         run = TaskRun(
-            task_name="CALLING: " + self.name,
+            task_name=self.name,
             start_time=datetime.now(timezone.utc),
             inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
         )
