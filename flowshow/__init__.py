@@ -168,7 +168,7 @@ class TaskDefinition:
                     if captured_output:
                         for line in captured_output.splitlines():
                             if line.strip():  # Skip empty lines
-                                run.info(line)
+                                info(line)
                 else:
                     result = self.func(*args, **kwargs)
 

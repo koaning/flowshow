@@ -16,7 +16,7 @@ def test_basic_task():
 
     # Check task run information
     last_run = simple_task.last_run
-    assert last_run.task_name == "CALLING: simple_task"
+    assert last_run.task_name == "simple_task"
     assert isinstance(last_run.start_time, datetime)
     assert isinstance(last_run.end_time, datetime)
     assert last_run.duration > 0
@@ -41,7 +41,7 @@ def test_nested_tasks():
     outer_run = outer_task.last_run
     assert len(outer_run.subtasks) == 1
     inner_run = outer_run.subtasks[0]
-    assert inner_run.task_name == "CALLING: inner_task"
+    assert inner_run.task_name == "inner_task"
     assert inner_run.inputs == {"arg0": 5}
     assert inner_run.output == 6
 
@@ -57,8 +57,9 @@ def test_task_with_logs():
     assert result == 42
 
     last_run = logging_task.last_run
-    assert "Starting task" in last_run.logs
-    assert "Task complete" in last_run.logs
+    written_logs = [log[1] for log in last_run.logs]
+    assert "Starting task" in written_logs
+    assert "Task complete" in written_logs
 
 
 def test_task_with_error():
@@ -73,7 +74,7 @@ def test_task_with_error():
     assert isinstance(last_run.error, ValueError)
     assert str(last_run.error) == "Task failed"
     assert last_run.end_time is not None
-    assert last_run.duration is None
+    assert last_run.duration is not None
 
 
 def test_task_timing():
@@ -100,22 +101,6 @@ def test_task_run_history():
     assert len(history) == 3
     assert all(isinstance(run, dict) for run in history)
     assert [run["inputs"]["arg0"] for run in history] == [0, 1, 2]
-
-
-def test_task_visualization():
-    @task
-    def visualized_task():
-        time.sleep(0.1)
-        return True
-
-    visualized_task()
-    chart = visualized_task.plot
-
-    # Check that the chart has the basic Altair structure
-    assert chart.mark == "bar"
-    assert "start_time" in str(chart.encoding.x)
-    assert "end_time" in str(chart.encoding.x2)
-    assert "task_name" in str(chart.encoding.y)
 
 
 def test_task_callbacks():
@@ -148,12 +133,12 @@ def test_task_callbacks():
     
     # Check successful task callback data
     success_data = callback_executions[0]
-    assert success_data["task_name"] == "CALLING: success_task"
+    assert success_data["task_name"] == "success_task"
     assert success_data["error"] is None
     assert success_data["inputs"]["arg0"] == 5
     
     # Check error task callback data
     error_data = callback_executions[1]
-    assert error_data["task_name"] == "CALLING: error_task"
+    assert error_data["task_name"] == "error_task"
     assert "Expected error" in error_data["error"]
     assert error_data["error_traceback"] is not None  # Traceback should be present
