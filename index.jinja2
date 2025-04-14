@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="darkMode ? 'dark' : ''">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,8 +25,16 @@
             transform: rotate(90deg);
         }
         body {
+            margin: 0;
+            padding: 16px;
+        }
+        body.dark {
             background-color: #0f1924;
             color: #e6edf3;
+        }
+        body.light {
+            background-color: #f8f9fa;
+            color: #212529;
         }
         .task-info {
             font-family: monospace;
@@ -38,29 +46,123 @@
             border-bottom: 1px solid #1c2a3a;
             cursor: pointer;
         }
+        .dark .task-row {
+            border-bottom: 1px solid #1c2a3a;
+        }
+        .light .task-row {
+            border-bottom: 1px solid #e9ecef;
+        }
         .task-row:hover {
             background-color: #1c2a3a;
+        }
+        .dark .task-row:hover {
+            background-color: #1c2a3a;
+        }
+        .light .task-row:hover {
+            background-color: #e9ecef;
         }
         .timestamp {
             font-family: monospace;
             color: #8b949e;
         }
+        .dark .timestamp {
+            color: #8b949e;
+        }
+        .light .timestamp {
+            color: #6c757d;
+        }
         .detail-panel {
             background-color: #1c2a3a;
             border-radius: 4px;
         }
+        .dark .detail-panel {
+            background-color: #1c2a3a;
+        }
+        .light .detail-panel {
+            background-color: #e9ecef;
+        }
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #334155;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #3b82f6;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        /* Additional light mode text styles for detail panel */
+        .light .text-gray-400 {
+            color: #6c757d;
+        }
+        .light .detail-panel {
+            color: #212529;
+        }
+        .light .font-mono {
+            color: #212529;
+        }
+        .light .bg-gray-800 {
+            background-color: #f1f3f5;
+        }
     </style>
 </head>
-<body class="p-4 m-0">
-    <div class="min-h-screen" x-data="taskData()">
+<body class="p-4 m-0" :class="darkMode ? 'dark' : 'light'">
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-10 px-4 py-2 flex justify-between items-center" 
+         :class="darkMode ? 'bg-gray-900' : 'bg-white shadow-sm'">
+        <div class="font-bold text-lg" :class="darkMode ? 'text-white' : 'text-gray-800'">
+            Task Span Visualization
+        </div>
+        <div class="flex items-center space-x-2">
+            <span :class="darkMode ? 'text-gray-400' : 'text-gray-600'">🌙</span>
+            <label class="toggle-switch">
+                <input type="checkbox" x-model="darkMode" @change="localStorage.setItem('darkMode', darkMode)">
+                <span class="slider"></span>
+            </label>
+            <span :class="darkMode ? 'text-gray-400' : 'text-gray-600'">☀️</span>
+        </div>
+    </nav>
+
+    <!-- Main content - add padding-top to account for fixed navbar -->
+    <div class="min-h-screen pt-14" x-data="taskData()">
         <div class="flex">
             <!-- Task list (left) -->
-            <div class="w-1/2 border-r border-gray-800">
+            <div class="w-1/2 border-r" :class="darkMode ? 'border-gray-800' : 'border-gray-200'">
                 <!-- Recursive task tree -->
                 <template x-for="(task, index) in taskTree" :key="task.id">
                     <div>
                         <div class="task-row" 
-                             :class="{'bg-blue-900 bg-opacity-30': selectedTaskId === task.id}"
+                             :class="{'bg-gray-700 bg-opacity-30': selectedTaskId === task.id}"
                              @mouseenter="hoveredTask = task"
                              @mouseleave="hoveredTask = null"
                              @click="selectTask(task)">
@@ -92,29 +194,29 @@
                     <template x-if="activeTask">
                         <div>
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="font-bold text-lg" x-text="'Task Details'"></h3>
-                                <div class="bg-gray-700 px-2 py-1 rounded text-xs" x-text="`Duration: ${activeTask.duration.toFixed(2)}s`"></div>
+                                <h3 class="font-bold text-lg font-mono" x-text="activeTask.id"></h3>
+                                <div class="px-2 py-1 rounded text-xs" 
+                                     :class="darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-300 text-gray-700'"
+                                     x-text="`Duration: ${activeTask.duration.toFixed(2)}s`"></div>
                             </div>
                             
-                            <div class="mb-4">
-                                <div class="text-gray-400 text-sm">Name</div>
-                                <div class="font-mono text-sm" x-text="activeTask.task_name"></div>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <div class="text-gray-400 text-sm">Start Time</div>
+                            <!-- Compact grid layout for basic info -->
+                            <div class="grid grid-cols-[120px_1fr] gap-2 mb-4">
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Name:</div>
+                                <div class="font-mono text-sm truncate" x-text="activeTask.task_name"></div>
+                                
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Start Time:</div>
                                 <div class="font-mono text-sm" x-text="formatDateTime(activeTask.start_time)"></div>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <div class="text-gray-400 text-sm">End Time</div>
+                                
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">End Time:</div>
                                 <div class="font-mono text-sm" x-text="formatDateTime(activeTask.end_time)"></div>
                             </div>
                             
                             <template x-if="activeTask.inputs && Object.keys(activeTask.inputs).length > 0">
                                 <div class="mb-4">
-                                    <div class="text-gray-400 text-sm">Inputs</div>
-                                    <div class="font-mono text-sm bg-gray-800 p-2 rounded mt-1 overflow-auto">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Inputs</div>
+                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto"
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
                                         <pre x-text="JSON.stringify(activeTask.inputs, null, 2)"></pre>
                                     </div>
                                 </div>
@@ -122,17 +224,39 @@
                             
                             <template x-if="activeTask.output">
                                 <div class="mb-4">
-                                    <div class="text-gray-400 text-sm">Output</div>
-                                    <div class="font-mono text-sm bg-gray-800 p-2 rounded mt-1 overflow-auto">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Output</div>
+                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto"
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
                                         <div x-text="activeTask.output"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.error">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Error</div>
+                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto"
+                                        :class="darkMode ? 'bg-red-900 bg-opacity-30 text-red-200' : 'bg-red-100 text-red-800'">
+                                        <div x-text="activeTask.error"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.error_traceback">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Traceback</div>
+                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto whitespace-pre-wrap" 
+                                         :class="darkMode ? 'bg-red-900 bg-opacity-30 text-red-200' : 'bg-red-100 text-red-800'">
+                                        <pre x-text="activeTask.error_traceback"></pre>
                                     </div>
                                 </div>
                             </template>
                             
                             <template x-if="activeTask.logs && activeTask.logs.length > 0">
                                 <div class="mb-4">
-                                    <div class="text-gray-400 text-sm">Logs</div>
-                                    <div class="font-mono text-sm bg-gray-800 p-2 rounded mt-1 overflow-auto">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Logs</div>
+                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto" 
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
                                         <template x-for="log in activeTask.logs">
                                             <div class="mb-1">
                                                 <span :class="getLogLevelClass(log[0])" class="inline-block w-24" x-text="log[0] + ':'"></span>
@@ -274,19 +398,20 @@
                 },
                 
                 getLogLevelClass(level) {
+                    const isDark = this.darkMode;
                     switch(level.toUpperCase()) {
                         case 'INFO':
-                            return 'text-blue-400';
+                            return isDark ? 'text-blue-400' : 'text-blue-600';
                         case 'WARNING':
-                            return 'text-yellow-400';
+                            return isDark ? 'text-yellow-400' : 'text-yellow-600';
                         case 'ERROR':
-                            return 'text-red-400';
+                            return isDark ? 'text-red-400' : 'text-red-600';
                         case 'CRITICAL':
-                            return 'text-rose-500';
+                            return isDark ? 'text-rose-500' : 'text-rose-600';
                         case 'DEBUG':
-                            return 'text-slate-400';
+                            return isDark ? 'text-slate-400' : 'text-slate-600';
                         default:
-                            return 'text-gray-400';
+                            return isDark ? 'text-gray-400' : 'text-gray-600';
                     }
                 }
             };

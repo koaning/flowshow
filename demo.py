@@ -81,6 +81,17 @@ def _(main_job, mo, template):
 
 
 @app.cell
+def _():
+    from pathlib import Path 
+    from jinja2 import Template 
+
+    template = Template(Path("index.jinja2").read_text())
+
+    # mo.iframe(template.render(data=run_many_nested.last_run.to_dict()))
+    return Path, Template, template
+
+
+@app.cell
 def _(d):
     d
     return
@@ -139,17 +150,6 @@ async def _(error, info, task, time, warning):
 
     await run_many_nested()
     return async_sleep, asyncio, run_concurrent_tasks, run_many_nested
-
-
-@app.cell
-def _():
-    from pathlib import Path 
-    from jinja2 import Template 
-
-    template = Template(Path("index.jinja2").read_text())
-
-    # mo.iframe(template.render(data=run_many_nested.last_run.to_dict()))
-    return Path, Template, template
 
 
 @app.cell
