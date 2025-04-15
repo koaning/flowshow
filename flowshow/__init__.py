@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 import uuid
 import inspect
 import io
@@ -9,11 +10,13 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, Literal
 import traceback
+from pathlib import Path
 
+from jinja2 import Template
 import altair as alt
 import pandas as pd
 import stamina
-
+import orjson
 from .visualize import flatten_tasks
 
 # Replace threading.local() with contextvars.ContextVar
@@ -94,6 +97,11 @@ class TaskRun:
             )
             .properties(width=800, height=400, title="Task Timeline")
         )
+    
+    def render(self):
+        template_path = Path(__file__).parent / "templates/index.html"
+        template = Template(template_path.read_text())
+        return template.render(data=self.to_dict())
 
 
 @contextmanager
@@ -146,11 +154,14 @@ class TaskDefinition:
     
     def _sync_call(self, *args, **kwargs):
         # Create a new run
+        converted_args = self._convert_inputs_to_json_dicts({f"arg{i}": arg for i, arg in enumerate(args)})
+        converted_kwargs = self._convert_inputs_to_json_dicts(kwargs)
         run = TaskRun(
             task_name=self.name,
             start_time=datetime.now(timezone.utc),
-            inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
+            inputs={**converted_args, **converted_kwargs},
         )
+
         
         with _task_run_context(run):
             try:
@@ -216,6 +227,9 @@ class TaskDefinition:
     def plot(self):
         return self.last_run.plot()
     
+    def render(self):
+        return self.last_run.render()
+    
     def to_dataframe(self):
         return self.last_run.to_dataframe()
 
@@ -223,12 +237,25 @@ class TaskDefinition:
         """Returns the complete history of all runs with their nested subtasks."""
         return [run.to_dict() for run in self.runs]
 
+    def _convert_inputs_to_json_dicts(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert inputs to JSON dicts if they are not already."""
+        result = {}
+        for k, v in inputs.items():
+            if isinstance(v, BaseModel):
+                result[k] = v.model_dump()
+            else:
+                result[k] = v
+        return result
+
+
     async def _async_call(self, *args, **kwargs):
         # Create a new run
+        converted_args = self._convert_inputs_to_json_dicts({f"arg{i}": arg for i, arg in enumerate(args)})
+        converted_kwargs = self._convert_inputs_to_json_dicts(kwargs)
         run = TaskRun(
-            task_name="CALLING: " + self.name,
+            task_name=self.name,
             start_time=datetime.now(timezone.utc),
-            inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
+            inputs={**converted_args, **converted_kwargs},
         )
         
         # Need async context manager

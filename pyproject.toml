@@ -30,6 +30,12 @@ build-backend = "hatchling.build"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.hatch.build.targets.wheel]
+packages = ["flowshow"]
+include = [
+    "flowshow/templates/**/*.jinja2",
+]
+
 [tool.ruff]
 # Same as Black.
 line-length = 130
