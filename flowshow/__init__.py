@@ -147,9 +147,6 @@ class TaskDefinition:
             return self._sync_call(*args, **kwargs)
     
     def _sync_call(self, *args, **kwargs):
-        # Create a new run
-        converted_args = self._convert_inputs_to_json_dicts({f"arg{i}": arg for i, arg in enumerate(args)})
-        converted_kwargs = self._convert_inputs_to_json_dicts(kwargs)
         run = TaskRun(
             task_name=self.name,
             start_time=datetime.now(timezone.utc),
@@ -241,9 +238,6 @@ class TaskDefinition:
 
 
     async def _async_call(self, *args, **kwargs):
-        # Create a new run
-        converted_args = self._convert_inputs_to_json_dicts({f"arg{i}": arg for i, arg in enumerate(args)})
-        converted_kwargs = self._convert_inputs_to_json_dicts(kwargs)
         run = TaskRun(
             task_name=self.name,
             start_time=datetime.now(timezone.utc),

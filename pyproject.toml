@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "pytz",
     "stamina",
+    "orjson",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
