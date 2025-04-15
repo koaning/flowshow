@@ -1,6 +1,6 @@
 [project]
 name = "flowshow"
-version = "0.1.3"
+version = "0.1.5"
 description = "A tool for visualizing nested task execution flows"
 authors = [
     {name = "Vincent Warmerdam", email = ""},
@@ -27,6 +27,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["flowshow"]
+include = [
+    "flowshow/templates/**/*.jinja2",
+]
 
 [tool.ruff]
 # Same as Black.

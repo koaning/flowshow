@@ -8,6 +8,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.3.0/luxon.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <style>
+        :root {
+            --max-page-height: 800px;
+        }
+        
         .task-bar {
             position: relative;
             height: 16px;
@@ -136,7 +140,7 @@
         }
     </style>
 </head>
-<body class="p-4 m-0" :class="darkMode ? 'dark' : 'light'">
+<body class="p-4 m-0 h-full" :class="darkMode ? 'dark' : 'light'">
     <!-- Navbar -->
     <nav class="fixed top-0 left-0 right-0 z-10 px-4 py-2 flex justify-between items-center" 
          :class="darkMode ? 'bg-gray-900' : 'bg-white shadow-sm'">
@@ -154,7 +158,7 @@
     </nav>
 
     <!-- Main content - add padding-top to account for fixed navbar -->
-    <div class="min-h-screen pt-14" x-data="taskData()">
+    <div class="h-full pt-14" x-data="taskData()" style="height: var(--max-page-height); overflow-y: auto;">
         <div class="flex">
             <!-- Task list (left) -->
             <div class="w-1/2 border-r" :class="darkMode ? 'border-gray-800' : 'border-gray-200'">
