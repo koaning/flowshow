@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, Lite
 import traceback
 
 import altair as alt
-import pandas as pd
+
 import stamina
 
 from .visualize import flatten_tasks
@@ -27,8 +27,6 @@ class TaskRun:
     start_time: datetime
     end_time: Optional[datetime] = None
     duration: Optional[float] = None
-    inputs: Dict[str, Any] = field(default_factory=dict)
-    output: Any = None
     error: Optional[Exception] = None
     error_traceback: Optional[str] = None
     subtasks: List["TaskRun"] = field(default_factory=list)
@@ -52,7 +50,6 @@ class TaskRun:
             "task_name": self.task_name,
             "start_time": self.start_time.isoformat(),
             "duration": self.duration,
-            "inputs": self.inputs,
             "error": str(self.error) if self.error else None,
             "error_traceback": self.error_traceback,
             "retry_count": self.retry_count,
@@ -69,16 +66,13 @@ class TaskRun:
         if self.artifacts:
             result["artifacts"] = self.artifacts
 
-        # Only include output if it's a simple type that can be serialized
-        if isinstance(self.output, (str, int, float, bool, type(None))):
-            result["output"] = self.output
-
         if self.subtasks:
             result["subtasks"] = [task.to_dict() for task in self.subtasks]
 
         return result
 
     def to_dataframe(self):
+        import pandas as pd
         return pd.DataFrame(flatten_tasks(self.to_dict()))
 
     def plot(self):
@@ -149,7 +143,6 @@ class TaskDefinition:
         run = TaskRun(
             task_name=self.name,
             start_time=datetime.now(timezone.utc),
-            inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
         )
         
         with _task_run_context(run):
@@ -177,7 +170,6 @@ class TaskDefinition:
                 # Record successful completion
                 run.end_time = datetime.now(timezone.utc)
                 run.duration = end - start
-                run.output = result
 
             except Exception as e:
                 # Record error if task fails
@@ -226,9 +218,8 @@ class TaskDefinition:
     async def _async_call(self, *args, **kwargs):
         # Create a new run
         run = TaskRun(
-            task_name="CALLING: " + self.name,
+            task_name=self.name,
             start_time=datetime.now(timezone.utc),
-            inputs={**{f"arg{i}": arg for i, arg in enumerate(args)}, **kwargs},
         )
         
         # Need async context manager
@@ -249,8 +240,7 @@ class TaskDefinition:
                 # Record successful completion
                 run.end_time = datetime.now(timezone.utc)
                 run.duration = end - start
-                run.output = result
-                
+
             except Exception as e:
                 # Calculate duration even for errors
                 end = time.perf_counter()

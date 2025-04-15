@@ -21,9 +21,6 @@ def test_basic_task():
     assert isinstance(last_run.end_time, datetime)
     assert last_run.duration > 0
     assert last_run.error is None
-    assert last_run.inputs == {"arg0": 5}
-    assert last_run.output == 10
-
 
 def test_nested_tasks():
     @task
@@ -42,8 +39,6 @@ def test_nested_tasks():
     assert len(outer_run.subtasks) == 1
     inner_run = outer_run.subtasks[0]
     assert inner_run.task_name == "inner_task"
-    assert inner_run.inputs == {"arg0": 5}
-    assert inner_run.output == 6
 
 
 def test_task_with_logs():
@@ -100,7 +95,6 @@ def test_task_run_history():
     history = counter_task.get_all_runs_history()
     assert len(history) == 3
     assert all(isinstance(run, dict) for run in history)
-    assert [run["inputs"]["arg0"] for run in history] == [0, 1, 2]
 
 
 def test_task_callbacks():
@@ -135,7 +129,6 @@ def test_task_callbacks():
     success_data = callback_executions[0]
     assert success_data["task_name"] == "success_task"
     assert success_data["error"] is None
-    assert success_data["inputs"]["arg0"] == 5
     
     # Check error task callback data
     error_data = callback_executions[1]
