@@ -28,6 +28,7 @@ LogLevel = Literal["INFO", "WARNING", "ERROR", "DEBUG"]
 class TaskRun:
     task_name: str
     start_time: datetime
+    task_type: Literal['function', 'span']
     end_time: Optional[datetime] = None
     duration: Optional[float] = None
     error: Optional[Exception] = None
@@ -54,6 +55,7 @@ class TaskRun:
         result = {
             "id": self.id,
             "task_name": self.task_name,
+            "task_type": self.task_type,
             "start_time": self.start_time.isoformat(),
             "duration": self.duration,
             "error": str(self.error) if self.error else None,
@@ -156,6 +158,7 @@ class TaskDefinition:
         run = TaskRun(
             task_name=self.name,
             start_time=datetime.now(timezone.utc),
+            task_type='function',
         )
 
         # Get caller information
@@ -260,6 +263,7 @@ class TaskDefinition:
         run = TaskRun(
             task_name=self.name,
             start_time=datetime.now(timezone.utc),
+            task_type='function',
         )
 
         # Get caller information
@@ -446,6 +450,7 @@ def span(name: str):
     run = TaskRun(
         task_name=name,
         start_time=datetime.now(timezone.utc),
+        task_type='span',
     )
 
     # Use the existing context manager to handle nesting

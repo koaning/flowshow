@@ -161,7 +161,7 @@
     <div class="h-full pt-14" x-data="taskData()" style="height: var(--max-page-height); overflow-y: auto;">
         <div class="flex">
             <!-- Task list (left) -->
-            <div class="w-1/3 border-r" :class="darkMode ? 'border-gray-800' : 'border-gray-200'">
+            <div class="w-1/2 border-r" :class="darkMode ? 'border-gray-800' : 'border-gray-200'">
                 <!-- Recursive task tree -->
                 <template x-for="(task, index) in taskTree" :key="task.id">
                     <div>
@@ -171,16 +171,28 @@
                              @mouseleave="hoveredTask = null"
                              @click="selectTask(task)">
                             
-                            <div class="timestamp w-24 pl-4" x-text="formatTime(task.start_time)"></div>
+                            <!-- Left Half: Task Identification -->
+                            <div class="flex items-center w-1/2 overflow-hidden">
+                                <div class="timestamp w-24 pl-4 text-xs flex-shrink-0" x-text="formatTime(task.start_time)"></div>
+                                <!-- Icon based on task_type -->
+                                <span class="w-4 h-4 inline-flex items-center justify-center rounded-sm text-xs font-bold text-white mx-1.5 flex-shrink-0"
+                                      :class="{
+                                          'bg-blue-500': task.task_type === 'function',
+                                          'bg-purple-500': task.task_type === 'span'
+                                      }"
+                                      x-text="task.task_type === 'function' ? 'F' : 'S'">
+                                </span>
 
-                            <div class="task-info flex-grow overflow-hidden whitespace-nowrap text-ellipsis flex items-center"
-                                 :style="`padding-left: ${task.level * 12}px`">
-                                <span class="toggle-icon mr-2" 
-                                      :class="{'expanded': expandedTasks[task.id], 'invisible': !task.hasChildren}"
-                                      @click.stop="toggleTaskExpansion(task)">▶</span>
-                                <span x-text="task.task_name"></span>
+                                <div class="task-info flex-grow overflow-hidden whitespace-nowrap text-ellipsis flex items-center min-w-0"
+                                     :style="`padding-left: ${task.level * 12}px`">
+                                    <span class="toggle-icon w-4 h-4 inline-flex items-center justify-center mr-2 flex-shrink-0" 
+                                          :class="{'expanded': expandedTasks[task.id], 'invisible': !task.hasChildren}"
+                                          @click.stop="toggleTaskExpansion(task)">▶</span>
+                                    <span class="text-[11px] truncate" x-text="task.task_name" :title="task.task_name"></span>
+                                </div>
                             </div>
                             
+                            <!-- Right Half: Gantt Bar -->
                             <div class="flex-grow-0 w-1/2 px-4 relative">
                                 <div class="task-bar" 
                                      :class="task.error ? 'bg-red-500' : 'bg-green-400'"
@@ -193,12 +205,12 @@
             </div>
             
             <!-- Detail panel (right) -->
-            <div class="w-2/3 pl-4">
+            <div class="w-1/2 pl-4">
                 <div class="detail-panel p-4 h-full" x-show="hoveredTask || selectedTaskId">
                     <template x-if="activeTask">
                         <div>
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold" x-text="activeTask.task_name"></h3>
+                                <h3 class="text-lg font-bold" x-text="activeTask.task_name"></h3>
                                 <span class="text-sm" :class="darkMode ? 'text-gray-400' : 'text-gray-600'"
                                       x-text="`Duration: ${formatDuration(activeTask.duration)}`"></span>
                             </div>
@@ -206,8 +218,8 @@
                             <!-- Source Location -->
                             <template x-if="activeTask.filepath">
                                 <div class="mb-4">
-                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Source</div>
-                                    <div class="font-mono text-sm p-2 rounded mt-1" :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Source</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1" :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
                                         <div x-text="`File: ${activeTask.filepath}`"></div>
                                         <div x-text="`Line: ${activeTask.lineno}`"></div>
                                         <div x-text="`Function: ${activeTask.funcname}`"></div>
@@ -217,20 +229,20 @@
 
                             <!-- Compact grid layout for basic info -->
                             <div class="grid grid-cols-[120px_1fr] gap-2 mb-4">
-                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Name:</div>
-                                <div class="font-mono text-sm truncate" x-text="activeTask.task_name"></div>
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Name:</div>
+                                <div class="font-mono text-xs truncate" x-text="activeTask.task_name"></div>
                                 
-                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Start Time:</div>
-                                <div class="font-mono text-sm" x-text="formatDateTime(activeTask.start_time)"></div>
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Start Time:</div>
+                                <div class="font-mono text-xs" x-text="formatDateTime(activeTask.start_time)"></div>
                                 
-                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">End Time:</div>
-                                <div class="font-mono text-sm" x-text="formatDateTime(activeTask.end_time)"></div>
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">End Time:</div>
+                                <div class="font-mono text-xs" x-text="formatDateTime(activeTask.end_time)"></div>
                             </div>
                             
                             <template x-if="activeTask.inputs && Object.keys(activeTask.inputs).length > 0">
                                 <div class="mb-4">
-                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Inputs</div>
-                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto"
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Inputs</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto"
                                          :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
                                         <pre x-text="JSON.stringify(activeTask.inputs, null, 2)"></pre>
                                     </div>
@@ -239,8 +251,8 @@
                             
                             <template x-if="activeTask.output">
                                 <div class="mb-4">
-                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Output</div>
-                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto"
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Output</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto"
                                          :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
                                         <div x-text="activeTask.output"></div>
                                     </div>
@@ -249,18 +261,18 @@
                             
                             <template x-if="activeTask.error">
                                 <div class="mb-4">
-                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Error</div>
-                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto"
-                                        :class="darkMode ? 'bg-red-900 bg-opacity-30 text-red-200' : 'bg-red-100 text-red-800'">
-                                        <div x-text="activeTask.error"></div>
+                                    <div :class="darkMode ? 'text-red-400' : 'text-red-600'" class="text-xs">Error</div>
+                                    <div class="font-mono text-xs text-red-400 p-2 rounded mt-1 whitespace-pre-wrap" 
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-red-50'"
+                                         x-text="activeTask.error_traceback || activeTask.error">
                                     </div>
                                 </div>
                             </template>
                             
                             <template x-if="activeTask.error_traceback">
                                 <div class="mb-4">
-                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Traceback</div>
-                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto whitespace-pre-wrap" 
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Traceback</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto whitespace-pre-wrap" 
                                          :class="darkMode ? 'bg-red-900 bg-opacity-30 text-red-200' : 'bg-red-100 text-red-800'">
                                         <pre x-text="activeTask.error_traceback"></pre>
                                     </div>
@@ -269,12 +281,12 @@
                             
                             <template x-if="activeTask.logs && activeTask.logs.length > 0">
                                 <div class="mb-4">
-                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-sm">Logs</div>
-                                    <div class="font-mono text-sm p-2 rounded mt-1 overflow-auto" 
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Logs</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto" 
                                          :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
                                         <template x-for="log in activeTask.logs">
                                             <div class="mb-1">
-                                                <span :class="getLogLevelClass(log[0])" class="inline-block w-24" x-text="log[0] + ':'"></span>
+                                                <span :class="getLogLevelClass(log[0])" class="inline-block w-16" x-text="padLogLevel(log[0])"></span>
                                                 <span x-text="log[1]"></span>
                                             </div>
                                         </template>
