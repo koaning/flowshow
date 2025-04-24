@@ -38,6 +38,9 @@ class TaskRun:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     artifacts: Dict[str, Any] = field(default_factory=dict)
     table: Dict[str, Any] = field(default_factory=dict)
+    filepath: Optional[str] = None
+    lineno: Optional[int] = None
+    funcname: Optional[str] = None
 
     def add_subtask(self, subtask: "TaskRun"):
         self.subtasks.append(subtask)
@@ -58,6 +61,9 @@ class TaskRun:
             "retry_count": self.retry_count,
             "artifacts": self.artifacts,
             "table": self.table,
+            "filepath": self.filepath,
+            "lineno": self.lineno,
+            "funcname": self.funcname,
         }
 
         if self.end_time:
@@ -152,6 +158,19 @@ class TaskDefinition:
             start_time=datetime.now(timezone.utc),
         )
 
+        # Get caller information
+        try:
+            caller_frame = inspect.getouterframes(inspect.currentframe(), 2)[1]
+            filepath = caller_frame.filename
+            lineno = caller_frame.lineno
+            funcname = caller_frame.function
+        except (IndexError, AttributeError):
+            # Fallback if frame info isn't available
+            filepath, lineno, funcname = None, None, None
+
+        run.filepath = filepath
+        run.lineno = lineno
+        run.funcname = funcname
         
         with _task_run_context(run):
             try:
@@ -242,6 +261,20 @@ class TaskDefinition:
             task_name=self.name,
             start_time=datetime.now(timezone.utc),
         )
+
+        # Get caller information
+        try:
+            caller_frame = inspect.getouterframes(inspect.currentframe(), 2)[1]
+            filepath = caller_frame.filename
+            lineno = caller_frame.lineno
+            funcname = caller_frame.function
+        except (IndexError, AttributeError):
+            # Fallback if frame info isn't available
+            filepath, lineno, funcname = None, None, None
+
+        run.filepath = filepath
+        run.lineno = lineno
+        run.funcname = funcname
         
         # Need async context manager
         async with _async_task_run_context(run):
@@ -397,3 +430,45 @@ def error(message: str) -> bool:
 def debug(message: str) -> bool:
     """Add a DEBUG level log message to the currently running task."""
     return log("DEBUG", message)
+
+
+@contextmanager
+def span(name: str):
+    """
+    A context manager for creating logical spans within a task or as a top-level task.
+
+    Args:
+        name: The name of the span/task.
+
+    Yields:
+        The TaskRun object associated with this span.
+    """
+    run = TaskRun(
+        task_name=name,
+        start_time=datetime.now(timezone.utc),
+    )
+
+    # Use the existing context manager to handle nesting
+    with _task_run_context(run):
+        try:
+            start_time_perf = time.perf_counter()
+            # Yield control back to the code inside the 'with' block
+            # 'run' can be optionally used via 'as s:'
+            yield run
+            end_time_perf = time.perf_counter()
+            # Mark successful completion
+            run.end_time = datetime.now(timezone.utc)
+            run.duration = end_time_perf - start_time_perf
+        except Exception as e:
+            end_time_perf = time.perf_counter()
+            # Mark failure
+            run.end_time = datetime.now(timezone.utc)
+            run.duration = end_time_perf - start_time_perf
+            run.error = e
+            run.error_traceback = traceback.format_exc()
+            # Log the error using the existing mechanism
+            error(f"Span '{name}' failed: {e}")
+            # Re-raise the exception so it propagates
+            raise
+        # The 'finally' block in _task_run_context handles adding the subtask
+        # to its parent, or making it a root task if no parent exists.

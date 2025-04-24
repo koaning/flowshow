@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.12.9"
+__generated_with = "0.12.8"
 app = marimo.App(width="full")
 
 
@@ -16,7 +16,7 @@ def _():
     import random
     from pydantic import BaseModel
     from typing import List
-    from flowshow import task, add_artifacts, info, debug, warning, error
+    from flowshow import task, add_artifacts, info, debug, warning, error, span
     return (
         BaseModel,
         List,
@@ -25,6 +25,7 @@ def _():
         error,
         info,
         random,
+        span,
         task,
         time,
         warning,
@@ -32,7 +33,7 @@ def _():
 
 
 @app.cell
-def _(BaseModel, List, add_artifacts, debug, info, task, time):
+def _(BaseModel, List, add_artifacts, debug, info, span, task, time):
     class Foobar(BaseModel):
         x: int
         y: int
@@ -46,7 +47,6 @@ def _(BaseModel, List, add_artifacts, debug, info, task, time):
     def many_things(many: ManyBar):
         info("This runs for demo purposes")
 
-    # Turns a function into a Task, which tracks a bunch of stuff
     @task
     def my_function(x):
         info("This function should always run")
@@ -54,7 +54,6 @@ def _(BaseModel, List, add_artifacts, debug, info, task, time):
         add_artifacts(foo=1, bar=2)
         return x * 2
 
-    # Tasks can also be configured to handle retries
     @task(retry_on=ValueError, retry_attempts=5)
     def might_fail():
         info("This function call might fail")
@@ -68,6 +67,11 @@ def _(BaseModel, List, add_artifacts, debug, info, task, time):
     def main_job():
         info("This output will be captured by the task")
         many_things(ManyBar(desc="hello", stuff=[Foobar(x=1, y=2, saying="ohyes")]))
+        with span("hello") as s:
+            info("test test")
+            with span("foobar") as f:
+                info("whoa whoa")
+
         for i in range(3):
             my_function(10)
             might_fail()
@@ -76,16 +80,6 @@ def _(BaseModel, List, add_artifacts, debug, info, task, time):
     # Run like you might run a normal function
     _ = main_job()
     return Foobar, ManyBar, main_job, many_things, might_fail, my_function
-
-
-@app.cell
-def _(main_job):
-    import orjson
-    import json
-    from jinja2.utils import htmlsafe_json_dumps
-
-    htmlsafe_json_dumps(main_job.last_run.to_dict())
-    return htmlsafe_json_dumps, json, orjson
 
 
 @app.cell
@@ -99,7 +93,7 @@ def _():
     from pathlib import Path 
     from jinja2 import Template 
 
-    template = Template(Path("flowshow/templates/index.jinja2").read_text())
+    template = Template(Path("flowshow/templates/index.html").read_text())
 
     # mo.iframe(template.render(data=run_many_nested.last_run.to_dict()))
     return Path, Template, template
