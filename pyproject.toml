@@ -1,6 +1,6 @@
 [project]
 name = "flowshow"
-version = "0.2.1"
+version = "0."
 description = "A tool for visualizing nested task execution flows"
 authors = [
     {name = "Vincent Warmerdam", email = ""},
@@ -34,7 +34,7 @@ allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = ["flowshow"]
 include = [
-    "flowshow/templates/**/*.jinja2",
+    "flowshow/templates/**/*.html",
 ]
 
 [tool.ruff]
