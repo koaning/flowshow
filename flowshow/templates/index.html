@@ -297,6 +297,23 @@
                                     </div>
                                 </div>
                             </template>
+                            
+                            <!-- Artifacts section -->
+                            <template x-if="activeTask.artifacts && Object.keys(activeTask.artifacts).length > 0">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Artifacts</div>
+                                    <div class="rounded mt-1 overflow-auto"
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
+                                        <!-- Loop through each artifact -->
+                                        <template x-for="(value, key) in activeTask.artifacts" :key="key">
+                                            <div class="border-b border-gray-700 p-2 last:border-b-0">
+                                                <div class="font-medium text-xs mb-1" x-text="key"></div>
+                                                <div class="font-mono text-xs whitespace-pre-wrap overflow-x-auto" x-html="formatArtifact(value)"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </template>
                 </div>
@@ -436,6 +453,28 @@
                     }
                 },
                 
+                formatArtifact(value) {
+                    try {
+                        // Check if the value is already a string
+                        if (typeof value === 'string') {
+                            // Try to parse it as JSON to pretty print
+                            try {
+                                const jsonObj = JSON.parse(value);
+                                return syntaxHighlight(JSON.stringify(jsonObj, null, 2), this.darkMode);
+                            } catch (e) {
+                                // Not JSON, just return the string with line breaks preserved
+                                return value.replace(/\n/g, '<br>');
+                            }
+                        } else {
+                            // For objects and arrays, pretty print
+                            return syntaxHighlight(JSON.stringify(value, null, 2), this.darkMode);
+                        }
+                    } catch (e) {
+                        // If anything goes wrong, return the value as string
+                        return String(value);
+                    }
+                },
+                
                 padLogLevel(level) {
                     // Pad the log level to a consistent length (9 chars should accommodate "CRITICAL:")
                     const paddedLevel = level + ":";
@@ -460,6 +499,36 @@
                     }
                 }
             };
+        }
+        
+        // Syntax highlighting function for JSON
+        function syntaxHighlight(json, isDarkMode) {
+            if (!json) return '';
+            
+            // Add syntax highlighting with colors
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls;
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        // Keys
+                        cls = isDarkMode ? 'text-gray-300 font-bold' : 'text-gray-700 font-bold';
+                    } else {
+                        // Strings
+                        cls = isDarkMode ? 'text-green-400' : 'text-green-600';
+                    }
+                } else if (/true|false/.test(match)) {
+                    // Booleans
+                    cls = isDarkMode ? 'text-yellow-400' : 'text-yellow-600';
+                } else if (/null/.test(match)) {
+                    // Null values
+                    cls = isDarkMode ? 'text-red-400' : 'text-red-600';
+                } else {
+                    // Numbers
+                    cls = isDarkMode ? 'text-blue-400' : 'text-blue-600';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
         }
     </script>
 </body>

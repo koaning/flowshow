@@ -51,7 +51,7 @@ def _(BaseModel, List, add_artifacts, debug, info, span, task, time):
     def my_function(x):
         info("This function should always run")
         time.sleep(0.2)
-        add_artifacts(foo=1, bar=2)
+        add_artifacts(foo=1, bar=2, buz={"hello": "there"})
         return x * 2
 
     @task(retry_on=ValueError, retry_attempts=5)
@@ -66,7 +66,7 @@ def _(BaseModel, List, add_artifacts, debug, info, span, task, time):
     @task()
     def main_job():
         info("This output will be captured by the task")
-        many_things(ManyBar(desc="hello", stuff=[Foobar(x=1, y=2, saying="ohyes")]))
+        add_artifacts(manybar=ManyBar(desc="hello", stuff=[Foobar(x=1, y=2, saying="ohyes")]))
         with span("hello") as s:
             info("test test")
             with span("foobar") as f:
@@ -83,14 +83,14 @@ def _(BaseModel, List, add_artifacts, debug, info, span, task, time):
 
 
 @app.cell
-def _(main_job, mo):
-    mo.iframe(main_job.last_run.render())
+def _(main_job):
+    main_job.last_run.to_dict()['artifacts']
     return
 
 
 @app.cell
-def _(main_job):
-    main_job.last_run.to_dict()
+def _(main_job, mo):
+    mo.iframe(main_job.last_run.render())
     return
 
 

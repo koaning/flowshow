@@ -24,6 +24,28 @@ _task_context = contextvars.ContextVar('task_context', default=None)
 
 LogLevel = Literal["INFO", "WARNING", "ERROR", "DEBUG"]
 
+def json_safe_encode(obj):
+    """
+    Make an object safe for JSON serialization.
+    If the object can't be serialized, convert it to its string representation.
+    """
+    # Handle Pydantic models (both v1 and v2 compatible)
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    elif hasattr(obj, "dict") and callable(obj.dict):
+        return obj.dict()
+    
+    try:
+        # Try to serialize with orjson
+        orjson.dumps(obj)
+        return obj
+    except (TypeError, ValueError):
+        # If object can't be serialized, return its string representation
+        try:
+            return repr(obj)
+        except:
+            return str(f"<Unserializable object of type {type(obj).__name__}>")
+
 @dataclass
 class TaskRun:
     task_name: str
@@ -61,7 +83,7 @@ class TaskRun:
             "error": str(self.error) if self.error else None,
             "error_traceback": self.error_traceback,
             "retry_count": self.retry_count,
-            "artifacts": self.artifacts,
+            "artifacts": self._safe_serialize_artifacts(),
             "table": self.table,
             "filepath": self.filepath,
             "lineno": self.lineno,
@@ -80,6 +102,19 @@ class TaskRun:
         if self.subtasks:
             result["subtasks"] = [task.to_dict() for task in self.subtasks]
 
+        return result
+
+    def _safe_serialize_artifacts(self) -> Dict[str, Any]:
+        """
+        Convert artifacts to JSON-serializable objects.
+        If an artifact can't be serialized directly, convert it to a string representation.
+        """
+        result = {}
+        if not self.artifacts:
+            return result
+            
+        for key, value in self.artifacts.items():
+            result[key] = json_safe_encode(value)
         return result
 
     def to_dataframe(self):
@@ -381,6 +416,7 @@ def add_artifacts(**artifacts: Dict[str, Any]) -> bool:
         return False
     
     # Update the artifacts dictionary with the new artifacts
+    artifacts = {k: json_safe_encode(v) for k, v in artifacts.items()}
     current_run.artifacts.update(**artifacts)
     return True
 
