@@ -11,7 +11,6 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Type, Union
 
-import altair as alt
 import orjson
 import stamina
 from jinja2 import Template
@@ -117,20 +116,6 @@ class TaskRun:
     def to_dataframe(self):
         import pandas as pd
         return pd.DataFrame(flatten_tasks(self.to_dict()))
-
-    def plot(self):
-        dataf = self.to_dataframe()
-        return (
-            alt.Chart(dataf)
-            .mark_bar()
-            .encode(
-                x=alt.X("start_time:T", title="Time"),
-                x2="end_time:T",
-                y=alt.Y("task_name:N", title="Task", sort=alt.EncodingSortField(field="start_time", order="ascending")),
-                tooltip=["task_name", "duration"],
-            )
-            .properties(width=800, height=400, title="Task Timeline")
-        )
     
     def render(self):
         template_path = Path(__file__).parent / "templates/index.html"
