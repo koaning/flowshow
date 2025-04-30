@@ -1,6 +1,6 @@
 [project]
 name = "flowshow"
-version = "0.2.0g"
+version = "0.2.0"
 description = "A tool for visualizing nested task execution flows"
 authors = [
     {name = "Vincent Warmerdam", email = ""},
