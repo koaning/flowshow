@@ -9,7 +9,8 @@ dependencies = [
     "pytz",
     "stamina",
     "orjson",
-    "jinja2"
+    "jinja2",
+    "pydantic",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
