@@ -1,6 +1,6 @@
 [project]
 name = "flowshow"
-version = "0.1.6"
+version = "0.2.0g"
 description = "A tool for visualizing nested task execution flows"
 authors = [
     {name = "Vincent Warmerdam", email = ""},
@@ -9,6 +9,7 @@ dependencies = [
     "pytz",
     "stamina",
     "orjson",
+    "jinja2"
 ]
 requires-python = ">=3.10"
 readme = "README.md"
