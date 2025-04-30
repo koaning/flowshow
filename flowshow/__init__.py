@@ -1,22 +1,22 @@
-from pydantic import BaseModel
-import uuid
+import contextvars
 import inspect
 import io
 import time
-import contextvars
-from contextlib import contextmanager, redirect_stdout, asynccontextmanager
+import traceback
+import uuid
+from contextlib import asynccontextmanager, contextmanager, redirect_stdout
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, Literal
-import traceback
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Type, Union
 
-from jinja2 import Template
 import altair as alt
-
-import stamina
 import orjson
+import stamina
+from jinja2 import Template
+from pydantic import BaseModel
+
 from .visualize import flatten_tasks
 
 # Replace threading.local() with contextvars.ContextVar
@@ -41,11 +41,8 @@ def json_safe_encode(obj):
         return obj
     except (TypeError, ValueError):
         # If object can't be serialized, return its string representation
-        try:
-            return repr(obj)
-        except:
-            return str(f"<Unserializable object of type {type(obj).__name__}>")
-
+        return repr(obj)
+        
 @dataclass
 class TaskRun:
     task_name: str
