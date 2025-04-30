@@ -27,6 +27,6 @@ clean:
 docs:
 	uv run marimo export html-wasm demo.py --output docs --mode edit
 
-pypi:
+pypi: clean
 	uv build
 	uv publish

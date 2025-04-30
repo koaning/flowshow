@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="darkMode ? 'dark' : ''">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Span Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.12.0/cdn.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.3.0/luxon.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --max-page-height: 800px;
+        }
+        
+        .task-bar {
+            position: relative;
+            height: 16px;
+            border-radius: 2px;
+            opacity: 0.8;
+        }
+        .toggle-icon {
+            transition: transform 0.2s ease;
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .toggle-icon.expanded {
+            transform: rotate(90deg);
+        }
+        body {
+            margin: 0;
+            padding: 16px;
+        }
+        body.dark {
+            background-color: #0f1924;
+            color: #e6edf3;
+        }
+        body.light {
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .task-info {
+            font-family: monospace;
+        }
+        .task-row {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid #1c2a3a;
+            cursor: pointer;
+        }
+        .dark .task-row {
+            border-bottom: 1px solid #1c2a3a;
+        }
+        .light .task-row {
+            border-bottom: 1px solid #e9ecef;
+        }
+        .task-row:hover {
+            background-color: #1c2a3a;
+        }
+        .dark .task-row:hover {
+            background-color: #1c2a3a;
+        }
+        .light .task-row:hover {
+            background-color: #e9ecef;
+        }
+        .timestamp {
+            font-family: monospace;
+            color: #8b949e;
+        }
+        .dark .timestamp {
+            color: #8b949e;
+        }
+        .light .timestamp {
+            color: #6c757d;
+        }
+        .detail-panel {
+            background-color: #1c2a3a;
+            border-radius: 4px;
+        }
+        .dark .detail-panel {
+            background-color: #1c2a3a;
+        }
+        .light .detail-panel {
+            background-color: #e9ecef;
+        }
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #334155;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #3b82f6;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        /* Additional light mode text styles for detail panel */
+        .light .text-gray-400 {
+            color: #6c757d;
+        }
+        .light .detail-panel {
+            color: #212529;
+        }
+        .light .font-mono {
+            color: #212529;
+        }
+        .light .bg-gray-800 {
+            background-color: #f1f3f5;
+        }
+    </style>
+</head>
+<body class="p-4 m-0 h-full" :class="darkMode ? 'dark' : 'light'">
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-10 px-4 py-2 flex justify-between items-center" 
+         :class="darkMode ? 'bg-gray-900' : 'bg-white shadow-sm'">
+        <div class="font-bold text-lg" :class="darkMode ? 'text-white' : 'text-gray-800'">
+            Task Span Visualization
+        </div>
+        <div class="flex items-center space-x-2">
+            <span :class="darkMode ? 'text-gray-400' : 'text-gray-600'">🌙</span>
+            <label class="toggle-switch">
+                <input type="checkbox" x-model="darkMode" @change="localStorage.setItem('darkMode', darkMode)">
+                <span class="slider"></span>
+            </label>
+            <span :class="darkMode ? 'text-gray-400' : 'text-gray-600'">☀️</span>
+        </div>
+    </nav>
+
+    <!-- Main content - add padding-top to account for fixed navbar -->
+    <div class="h-full pt-14" x-data="taskData()" style="height: var(--max-page-height); overflow-y: auto;">
+        <div class="flex">
+            <!-- Task list (left) -->
+            <div class="w-1/2 border-r" :class="darkMode ? 'border-gray-800' : 'border-gray-200'">
+                <!-- Recursive task tree -->
+                <template x-for="(task, index) in taskTree" :key="task.id">
+                    <div>
+                        <div class="task-row" 
+                             :class="{'bg-gray-700 bg-opacity-30': selectedTaskId === task.id}"
+                             @mouseenter="hoveredTask = task"
+                             @mouseleave="hoveredTask = null"
+                             @click="selectTask(task)">
+                            
+                            <!-- Left Half: Task Identification -->
+                            <div class="flex items-center w-1/2 overflow-hidden">
+                                <div class="timestamp w-24 pl-4 text-xs flex-shrink-0" x-text="formatTime(task.start_time)"></div>
+                                <!-- Icon based on task_type -->
+                                <span class="w-4 h-4 inline-flex items-center justify-center rounded-sm text-xs font-bold text-white mx-1.5 flex-shrink-0"
+                                      :class="{
+                                          'bg-blue-500': task.task_type === 'function',
+                                          'bg-purple-500': task.task_type === 'span'
+                                      }"
+                                      x-text="task.task_type === 'function' ? 'F' : 'S'">
+                                </span>
+
+                                <div class="task-info flex-grow overflow-hidden whitespace-nowrap text-ellipsis flex items-center min-w-0"
+                                     :style="`padding-left: ${task.level * 12}px`">
+                                    <span class="toggle-icon w-4 h-4 inline-flex items-center justify-center mr-2 flex-shrink-0" 
+                                          :class="{'expanded': expandedTasks[task.id], 'invisible': !task.hasChildren}"
+                                          @click.stop="toggleTaskExpansion(task)">▶</span>
+                                    <span class="text-sm font-mono truncate" x-text="task.task_name" :title="task.task_name"></span>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Half: Gantt Bar -->
+                            <div class="flex-grow-0 w-1/2 px-4 relative flex">
+                                <div class="relative flex-grow">
+                                    <div class="task-bar" 
+                                         :class="task.error ? 'bg-red-500' : 'bg-green-400'"
+                                         :style="`left: ${timeToPosition(new Date(task.start_time))}%; width: ${durationToWidth(task.duration)}%;`">
+                                    </div>
+                                </div>
+                                <div class="text-sm text-gray-500 text-right w-16 flex-shrink-0 font-mono" 
+                                     x-text="formatDuration(task.duration)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            
+            <!-- Detail panel (right) -->
+            <div class="w-1/2 pl-4">
+                <div class="detail-panel p-4 h-full" x-show="hoveredTask || selectedTaskId">
+                    <template x-if="activeTask">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold" x-text="activeTask.task_name"></h3>
+                                <span class="text-sm font-mono" :class="darkMode ? 'text-gray-400' : 'text-gray-600'"
+                                      x-text="`Duration: ${formatDuration(activeTask.duration)}`"></span>
+                            </div>
+
+                            <!-- Source Location -->
+                            <template x-if="activeTask.filepath">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Source</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1" :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
+                                        <div x-text="`File: ${activeTask.filepath}`"></div>
+                                        <div x-text="`Line: ${activeTask.lineno}`"></div>
+                                        <div x-text="`Function: ${activeTask.funcname}`"></div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Compact grid layout for basic info -->
+                            <div class="grid grid-cols-[120px_1fr] gap-2 mb-4">
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Name:</div>
+                                <div class="font-mono text-xs truncate" x-text="activeTask.task_name"></div>
+                                
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Start Time:</div>
+                                <div class="font-mono text-xs" x-text="formatDateTime(activeTask.start_time)"></div>
+                                
+                                <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">End Time:</div>
+                                <div class="font-mono text-xs" x-text="formatDateTime(activeTask.end_time)"></div>
+                            </div>
+                            
+                            <template x-if="activeTask.inputs && Object.keys(activeTask.inputs).length > 0">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Inputs</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto"
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
+                                        <pre x-text="JSON.stringify(activeTask.inputs, null, 2)"></pre>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.output">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Output</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto"
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
+                                        <div x-text="activeTask.output"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.error">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-red-400' : 'text-red-600'" class="text-xs">Error</div>
+                                    <div class="font-mono text-xs text-red-400 p-2 rounded mt-1 whitespace-pre-wrap" 
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-red-50'"
+                                         x-text="activeTask.error_traceback || activeTask.error">
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.error_traceback">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Traceback</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto whitespace-pre-wrap" 
+                                         :class="darkMode ? 'bg-red-900 bg-opacity-30 text-red-200' : 'bg-red-100 text-red-800'">
+                                        <pre x-text="activeTask.error_traceback"></pre>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <template x-if="activeTask.logs && activeTask.logs.length > 0">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Logs</div>
+                                    <div class="font-mono text-xs p-2 rounded mt-1 overflow-auto" 
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
+                                        <template x-for="log in activeTask.logs">
+                                            <div class="mb-1">
+                                                <span :class="getLogLevelClass(log[0])" class="inline-block w-16" x-text="padLogLevel(log[0])"></span>
+                                                <span x-text="log[1]"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <!-- Artifacts section -->
+                            <template x-if="activeTask.artifacts && Object.keys(activeTask.artifacts).length > 0">
+                                <div class="mb-4">
+                                    <div :class="darkMode ? 'text-gray-400' : 'text-gray-600'" class="text-xs">Artifacts</div>
+                                    <div class="rounded mt-1 overflow-auto"
+                                         :class="darkMode ? 'bg-gray-800' : 'bg-gray-100'">
+                                        <!-- Loop through each artifact -->
+                                        <template x-for="(value, key) in activeTask.artifacts" :key="key">
+                                            <div class="border-b border-gray-700 p-2 last:border-b-0">
+                                                <div class="font-medium text-xs mb-1" x-text="key"></div>
+                                                <div class="font-mono text-xs whitespace-pre-wrap overflow-x-auto" x-html="formatArtifact(value)"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function taskData() {
+            const data = {{data|tojson|safe}};
+
+            // Calculate global start and end times
+            const startTime = new Date(data.start_time);
+            let endTime = new Date(data.end_time);
+            
+            // Process task tree recursively
+            function processTaskTree(task, level = 0, parentPath = []) {
+                const taskWithMeta = {
+                    ...task,
+                    level: level,
+                    path: [...parentPath, task.id],
+                    hasChildren: !!(task.subtasks && task.subtasks.length > 0)
+                };
+                
+                const result = [taskWithMeta];
+                
+                if (task.subtasks && task.subtasks.length > 0) {
+                    task.subtasks.forEach(subtask => {
+                        result.push(...processTaskTree(subtask, level + 1, [...parentPath, task.id]));
+                    });
+                }
+                
+                return result;
+            }
+            
+            // Initial processing of all tasks
+            const allTasks = processTaskTree(data);
+            
+            // Create map of expanded state (start with root expanded)
+            const initialExpandedState = {};
+            initialExpandedState[data.id] = true;
+            
+            return {
+                taskData: data,
+                allTasks: allTasks,
+                expandedTasks: initialExpandedState,
+                startTime,
+                endTime,
+                totalDuration: (endTime - startTime) / 1000, // in seconds
+                hoveredTask: null,
+                selectedTaskId: null,
+                
+                // Computed property for visible tasks based on expanded state
+                get taskTree() {
+                    const visibleTasks = [];
+                    const addVisibleTasks = (tasks, parentVisible = true) => {
+                        for (const task of tasks) {
+                            const isVisible = parentVisible;
+                            
+                            if (isVisible) {
+                                visibleTasks.push(task);
+                                
+                                // If this task has subtasks and is expanded, process them
+                                if (task.hasChildren && this.expandedTasks[task.id]) {
+                                    const childTasks = this.allTasks.filter(t => 
+                                        t.level === task.level + 1 && 
+                                        t.path[t.level - 1] === task.id
+                                    );
+                                    addVisibleTasks(childTasks, true);
+                                }
+                            }
+                        }
+                    };
+                    
+                    // Start with root-level tasks (level 0)
+                    const rootTasks = this.allTasks.filter(task => task.level === 0);
+                    addVisibleTasks(rootTasks);
+                    
+                    return visibleTasks;
+                },
+                
+                // Returns the currently active task (either hovered or selected)
+                get activeTask() {
+                    if (this.hoveredTask) return this.hoveredTask;
+                    if (this.selectedTaskId) {
+                        return this.allTasks.find(task => task.id === this.selectedTaskId);
+                    }
+                    return null;
+                },
+                
+                // Toggle expansion state of a task
+                toggleTaskExpansion(task) {
+                    if (!task.hasChildren) return;
+                    
+                    this.expandedTasks[task.id] = !this.expandedTasks[task.id];
+                },
+                
+                // Select a task when clicked
+                selectTask(task) {
+                    if (this.selectedTaskId === task.id) {
+                        this.selectedTaskId = null;
+                    } else {
+                        this.selectedTaskId = task.id;
+                    }
+                },
+                
+                timeToPosition(time) {
+                    return ((time - this.startTime) / (this.endTime - this.startTime)) * 100;
+                },
+                
+                durationToWidth(duration) {
+                    return (duration / this.totalDuration) * 100;
+                },
+                
+                formatTime(timeString) {
+                    const time = new Date(timeString);
+                    return time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+                },
+                
+                formatDateTime(dateString) {
+                    if (!dateString) return '';
+                    const dt = luxon.DateTime.fromISO(dateString);
+                    return dt.toFormat('HH:mm:ss.SSS');
+                },
+                
+                formatDuration(durationSeconds) {
+                    if (durationSeconds < 0.001) {
+                        return "< 1ms";
+                    } else if (durationSeconds < 1) {
+                        return `${Math.round(durationSeconds * 1000)}ms`;
+                    } else if (durationSeconds < 60) {
+                        return `${durationSeconds.toFixed(2)}s`;
+                    } else {
+                        const minutes = Math.floor(durationSeconds / 60);
+                        const seconds = (durationSeconds % 60).toFixed(1);
+                        return `${minutes}m ${seconds}s`;
+                    }
+                },
+                
+                formatArtifact(value) {
+                    try {
+                        // Check if the value is already a string
+                        if (typeof value === 'string') {
+                            // Try to parse it as JSON to pretty print
+                            try {
+                                const jsonObj = JSON.parse(value);
+                                return syntaxHighlight(JSON.stringify(jsonObj, null, 2), this.darkMode);
+                            } catch (e) {
+                                // Not JSON, just return the string with line breaks preserved
+                                return value.replace(/\n/g, '<br>');
+                            }
+                        } else {
+                            // For objects and arrays, pretty print
+                            return syntaxHighlight(JSON.stringify(value, null, 2), this.darkMode);
+                        }
+                    } catch (e) {
+                        // If anything goes wrong, return the value as string
+                        return String(value);
+                    }
+                },
+                
+                padLogLevel(level) {
+                    // Pad the log level to a consistent length (9 chars should accommodate "CRITICAL:")
+                    const paddedLevel = level + ":";
+                    return paddedLevel.padEnd(9, ' ');
+                },
+                
+                getLogLevelClass(level) {
+                    const isDark = this.darkMode;
+                    switch(level.toUpperCase()) {
+                        case 'INFO':
+                            return isDark ? 'text-blue-400' : 'text-blue-600';
+                        case 'WARNING':
+                            return isDark ? 'text-yellow-400' : 'text-yellow-600';
+                        case 'ERROR':
+                            return isDark ? 'text-red-400' : 'text-red-600';
+                        case 'CRITICAL':
+                            return isDark ? 'text-rose-500' : 'text-rose-600';
+                        case 'DEBUG':
+                            return isDark ? 'text-slate-400' : 'text-slate-600';
+                        default:
+                            return isDark ? 'text-gray-400' : 'text-gray-600';
+                    }
+                }
+            };
+        }
+        
+        // Syntax highlighting function for JSON
+        function syntaxHighlight(json, isDarkMode) {
+            if (!json) return '';
+            
+            // Add syntax highlighting with colors
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls;
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        // Keys
+                        cls = isDarkMode ? 'text-gray-300 font-bold' : 'text-gray-700 font-bold';
+                    } else {
+                        // Strings
+                        cls = isDarkMode ? 'text-green-400' : 'text-green-600';
+                    }
+                } else if (/true|false/.test(match)) {
+                    // Booleans
+                    cls = isDarkMode ? 'text-yellow-400' : 'text-yellow-600';
+                } else if (/null/.test(match)) {
+                    // Null values
+                    cls = isDarkMode ? 'text-red-400' : 'text-red-600';
+                } else {
+                    // Numbers
+                    cls = isDarkMode ? 'text-blue-400' : 'text-blue-600';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+    </script>
+</body>
+</html>
