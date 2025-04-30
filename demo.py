@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.12.8"
+__generated_with = "0.12.9"
 app = marimo.App(width="full")
 
 
@@ -89,19 +89,8 @@ def _(main_job, mo):
 
 
 @app.cell
-def _():
-    from pathlib import Path 
-    from jinja2 import Template 
-
-    template = Template(Path("flowshow/templates/index.html").read_text())
-
-    # mo.iframe(template.render(data=run_many_nested.last_run.to_dict()))
-    return Path, Template, template
-
-
-@app.cell
 def _(main_job):
-    main_job.last_run.to_dict()['error_traceback']
+    main_job.last_run.to_dict()
     return
 
 
@@ -155,28 +144,8 @@ async def _(error, info, task, time, warning):
 
 
 @app.cell
-def _(main_job):
-    out = main_job.to_dataframe()
-    return (out,)
-
-
-@app.cell
-def _(out):
-    out
-    return
-
-
-@app.cell(hide_code=True)
-def _(main_job, mo):
-    chart = mo.ui.altair_chart(main_job.plot())
-    chart
-    return (chart,)
-
-
-@app.cell(hide_code=True)
-def _(chart):
-    if chart.value["logs"].shape[0] > 0:
-        print(list(chart.value["logs"])[0])
+def _(mo, run_many_nested):
+    mo.iframe(run_many_nested.last_run.render())
     return
 
 
@@ -184,11 +153,6 @@ def _(chart):
 def _():
     import marimo as mo
     return (mo,)
-
-
-@app.cell
-def _():
-    return
 
 
 if __name__ == "__main__":

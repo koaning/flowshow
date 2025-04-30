@@ -188,16 +188,20 @@
                                     <span class="toggle-icon w-4 h-4 inline-flex items-center justify-center mr-2 flex-shrink-0" 
                                           :class="{'expanded': expandedTasks[task.id], 'invisible': !task.hasChildren}"
                                           @click.stop="toggleTaskExpansion(task)">▶</span>
-                                    <span class="text-[11px] truncate" x-text="task.task_name" :title="task.task_name"></span>
+                                    <span class="text-sm font-mono truncate" x-text="task.task_name" :title="task.task_name"></span>
                                 </div>
                             </div>
                             
                             <!-- Right Half: Gantt Bar -->
-                            <div class="flex-grow-0 w-1/2 px-4 relative">
-                                <div class="task-bar" 
-                                     :class="task.error ? 'bg-red-500' : 'bg-green-400'"
-                                     :style="`left: ${timeToPosition(new Date(task.start_time))}%; width: ${durationToWidth(task.duration)}%;`">
+                            <div class="flex-grow-0 w-1/2 px-4 relative flex">
+                                <div class="relative flex-grow">
+                                    <div class="task-bar" 
+                                         :class="task.error ? 'bg-red-500' : 'bg-green-400'"
+                                         :style="`left: ${timeToPosition(new Date(task.start_time))}%; width: ${durationToWidth(task.duration)}%;`">
+                                    </div>
                                 </div>
+                                <div class="text-sm text-gray-500 text-right w-16 flex-shrink-0 font-mono" 
+                                     x-text="formatDuration(task.duration)"></div>
                             </div>
                         </div>
                     </div>
@@ -211,7 +215,7 @@
                         <div>
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-lg font-bold" x-text="activeTask.task_name"></h3>
-                                <span class="text-sm" :class="darkMode ? 'text-gray-400' : 'text-gray-600'"
+                                <span class="text-sm font-mono" :class="darkMode ? 'text-gray-400' : 'text-gray-600'"
                                       x-text="`Duration: ${formatDuration(activeTask.duration)}`"></span>
                             </div>
 
@@ -409,13 +413,27 @@
                 
                 formatTime(timeString) {
                     const time = new Date(timeString);
-                    return time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+                    return time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
                 },
                 
                 formatDateTime(dateString) {
                     if (!dateString) return '';
                     const dt = luxon.DateTime.fromISO(dateString);
                     return dt.toFormat('HH:mm:ss.SSS');
+                },
+                
+                formatDuration(durationSeconds) {
+                    if (durationSeconds < 0.001) {
+                        return "< 1ms";
+                    } else if (durationSeconds < 1) {
+                        return `${Math.round(durationSeconds * 1000)}ms`;
+                    } else if (durationSeconds < 60) {
+                        return `${durationSeconds.toFixed(2)}s`;
+                    } else {
+                        const minutes = Math.floor(durationSeconds / 60);
+                        const seconds = (durationSeconds % 60).toFixed(1);
+                        return `${minutes}m ${seconds}s`;
+                    }
                 },
                 
                 padLogLevel(level) {
