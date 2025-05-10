@@ -251,9 +251,6 @@ class TaskDefinition:
     def last_run(self) -> Optional[TaskRun]:
         """Returns the most recent run of this task"""
         return self.runs[-1] if self.runs else None
-
-    def plot(self):
-        return self.last_run.plot()
     
     def render(self):
         return self.last_run.render()
