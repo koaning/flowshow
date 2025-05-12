@@ -12,164 +12,68 @@ uv pip install flowshow
 
 ## Usage
 
-Flowshow provides a `@task` decorator that helps you track and visualize the execution of your Python functions. Here's how to use it:
+Flowshow provides a `@task` decorator that helps you track and visualize the execution of your Python functions. There is also a context manager called `span` that can do the same as well as some logging utilities like `info`, `warning` and `add_artifacts`. In short, here's how to use it:
 
 ```python
 import time
 import random
+from pydantic import BaseModel
+from typing import List
+from flowshow import task, add_artifacts, info, debug, warning, error, span
 
-from flowshow import task
+class Foobar(BaseModel):
+    x: int
+    y: int
+    saying: str
 
-# Turns a function into a Task, which tracks a bunch of stuff
+class ManyBar(BaseModel):
+    desc: str
+    stuff: List[Foobar]
+
+@task
+def many_things(many: ManyBar):
+    info("This runs for demo purposes")
+
 @task
 def my_function(x):
-    time.sleep(0.5)
+    info("This function should always run")
+    time.sleep(0.2)
+    add_artifacts(foo=1, bar=2, buz={"hello": "there"})
     return x * 2
 
-# Tasks can also be configured to handle retries
-@task(retry_on=ValueError, retry_attempts=10)
+@task(retry_on=ValueError, retry_attempts=5)
 def might_fail():
-    time.sleep(0.5)
-    if random.random() < 0.5:
-        raise ValueError("oh no, error!")
+    info("This function call might fail")
+    time.sleep(0.2)
+    my_function(2)
+    # raise ValueError("oh noes")
+    debug("The function has passed! Yay!")
     return "done"
 
-@task
+@task()
 def main_job():
-    print("This output will be captured by the task")
+    info("This output will be captured by the task")
+    add_artifacts(manybar=ManyBar(desc="hello", stuff=[Foobar(x=1, y=2, saying="ohyes")]))
+    with span("hello") as s:
+        info("test test")
+        with span("foobar") as f:
+            info("whoa whoa")
+
     for i in range(3):
         my_function(10)
         might_fail()
     return "done"
 
 # Run like you might run a normal function
-main_job()
+_ = main_job()
 ```
 
 Once you run your function you can expect some nice visuals, like this one:
 
 ```python
-main_job.plot()
+main_job.last_run.render()
 ```
 
-![](imgs/screenshot.png)
+![](imgs/demo.gif)
 
-You can also inspect the raw data yourself by running:
-
-```python
-main_job.last_run.to_dict()
-```
-
-<details>
-<summary>Show the full dictionary.</summary>
-
-```
-{
-  "task_name": "main_job",
-  "start_time": "2025-02-04T21:25:17.045576+00:00",
-  "duration": 8.864794875029474,
-  "inputs": {},
-  "error": None,
-  "retry_count": 0,
-  "end_time": "2025-02-04T21:25:25.909997+00:00",
-  "logs": "This output will be captured by the task\n",
-  "output": "done",
-  "subtasks": [
-    {
-      "task_name": "my_function",
-      "start_time": "2025-02-04T21:25:17.045786+00:00",
-      "duration": 0.5050525842234492,
-      "inputs": {
-        "arg0": 10
-      },
-      "error": None,
-      "retry_count": 0,
-      "end_time": "2025-02-04T21:25:17.550808+00:00",
-      "logs": "",
-      "output": 20
-    },
-    {
-      "task_name": "might_fail",
-      "start_time": "2025-02-04T21:25:17.550853+00:00",
-      "duration": 0.5053939162753522,
-      "inputs": {},
-      "error": None,
-      "retry_count": 0,
-      "end_time": "2025-02-04T21:25:18.056233+00:00",
-      "logs": "",
-      "output": "done"
-    },
-    {
-      "task_name": "my_function",
-      "start_time": "2025-02-04T21:25:18.056244+00:00",
-      "duration": 0.5052881669253111,
-      "inputs": {
-        "arg0": 10
-      },
-      "error": None,
-      "retry_count": 0,
-      "end_time": "2025-02-04T21:25:18.561502+00:00",
-      "logs": "",
-      "output": 20
-    },
-    {
-      "task_name": "might_fail",
-      "start_time": "2025-02-04T21:25:18.561516+00:00",
-      "duration": 2.1351009169593453,
-      "inputs": {},
-      "error": None,
-      "retry_count": 0,
-      "end_time": "2025-02-04T21:25:20.696477+00:00",
-      "logs": "",
-      "output": "done"
-    },
-    {
-      "task_name": "my_function",
-      "start_time": "2025-02-04T21:25:20.696511+00:00",
-      "duration": 0.5026454580947757,
-      "inputs": {
-        "arg0": 10
-      },
-      "error": None,
-      "retry_count": 0,
-      "end_time": "2025-02-04T21:25:21.199158+00:00",
-      "logs": "",
-      "output": 20
-    },
-    {
-      "task_name": "might_fail",
-      "start_time": "2025-02-04T21:25:21.199213+00:00",
-      "duration": 4.711003000382334,
-      "inputs": {},
-      "error": None,
-      "retry_count": 0,
-      "end_time": "2025-02-04T21:25:25.909979+00:00",
-      "logs": "",
-      "output": "done"
-    }
-  ]
-}
-```
-
-</details>
-
-You can also get a flat representation of the same data in a dataframe via:
-
-```python
-main_job.to_dataframe()
-```
-
-This is what it looks like in Marimo when you evaluate this. Note that we also track the logs of the print statements for later inspection. 
-
-![](imgs/dataframe.png)
-
-### Multiple runs
-
-If you run the function multiple times you can also inspect multiple runs:
-
-```python
-main_job.runs
-```
-
-This can be useful, but most of the times you're probably interested in the last run. 
-
+You can fully inspect the flow of the program, which can help you debug or refactor your code. It plays very nice with interactive notebooks too!

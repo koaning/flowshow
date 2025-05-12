@@ -1,10 +1,21 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "jinja2==3.1.6",
+#     "marimo",
+#     "orjson==3.10.18",
+#     "pydantic==2.11.4",
+#     "stamina==25.1.0",
+# ]
+# ///
+
 import marimo
 
-__generated_with = "0.12.9"
-app = marimo.App(width="full")
+__generated_with = "0.13.6"
+app = marimo.App(width="columns")
 
 
-@app.cell
+@app.cell(column=0)
 def _(mo):
     mo.md("""Flowshow provides a `@task` decorator that helps you track and visualize the execution of your Python functions. Here's how to use it:""")
     return
@@ -24,7 +35,6 @@ def _():
         debug,
         error,
         info,
-        random,
         span,
         task,
         time,
@@ -79,19 +89,7 @@ def _(BaseModel, List, add_artifacts, debug, info, span, task, time):
 
     # Run like you might run a normal function
     _ = main_job()
-    return Foobar, ManyBar, main_job, many_things, might_fail, my_function
-
-
-@app.cell
-def _(main_job):
-    main_job.last_run.to_dict()['artifacts']
-    return
-
-
-@app.cell
-def _(main_job, mo):
-    mo.iframe(main_job.last_run.render())
-    return
+    return (main_job,)
 
 
 @app.cell
@@ -140,7 +138,19 @@ async def _(error, info, task, time, warning):
         error("They both ran!")
 
     await run_many_nested()
-    return async_sleep, asyncio, run_concurrent_tasks, run_many_nested
+    return (run_many_nested,)
+
+
+@app.cell
+def _():
+    import marimo as mo
+    return (mo,)
+
+
+@app.cell(column=1)
+def _(main_job, mo):
+    mo.iframe(main_job.last_run.render())
+    return
 
 
 @app.cell
@@ -151,8 +161,12 @@ def _(mo, run_many_nested):
 
 @app.cell
 def _():
-    import marimo as mo
-    return (mo,)
+    return
+
+
+@app.cell(column=2)
+def _():
+    return
 
 
 if __name__ == "__main__":
