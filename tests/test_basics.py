@@ -135,3 +135,23 @@ def test_task_callbacks():
     assert error_data["task_name"] == "error_task"
     assert "Expected error" in error_data["error"]
     assert error_data["error_traceback"] is not None  # Traceback should be present
+
+
+def test_save_rander():
+    @task
+    def sample_task():
+        return "Sample task completed"
+
+    # Run the task to generate a last_run
+    sample_task()
+
+    # Save the rendered HTML to a file
+    sample_task.last_run.save_render("test_task_run.html")
+
+    # Check if the file was created
+    import os
+    assert os.path.exists("test_task_run.html")
+
+    # Clean up the generated file
+    os.remove("test_task_run.html")
+
