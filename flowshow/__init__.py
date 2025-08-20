@@ -114,14 +114,22 @@ class TaskRun:
         return result
 
     def to_dataframe(self):
-        import pandas as pd
-        return pd.DataFrame(flatten_tasks(self.to_dict()))
+        import polars as pl
+        return pl.from_records(flatten_tasks(self.to_dict()))
     
     def render(self):
         template_path = Path(__file__).parent / "templates/index.html"
         template = Template(template_path.read_text())
         return template.render(data=self.to_dict())
-
+    
+    def save_render(self, path: Union[str, Path] = "task_run.html") -> None:
+        """Render the task run to HTML and save it to the specified path."""
+        path_str = path
+        if isinstance(path, Path):
+            path_str = str(path)
+               
+        with open(path_str, 'w') as f:
+            f.write(self.render())
 
 @contextmanager
 def _task_run_context(run: TaskRun):
@@ -336,6 +344,9 @@ class TaskDefinition:
                         run._log("ERROR", error_msg)
                         
             return result
+        
+    def save_render(self, path: Union[str, Path] = "task_run.html") -> None:
+        self.last_run.save_render(path)
 
 
 def task(
